@@ -1,4 +1,5 @@
 import sqlite3
+import numpy as np
 import pandas as pd
 import datetime
 
@@ -71,6 +72,42 @@ def show_gui(df):
 
     win.exec_()
 
+def show_comparison(df, df_smoothed):
+    app = QApplication(sys.argv)
+
+    win = PlotDialog(
+        title="Porównanie: dane / wygładzone",
+        options=PlotOptions(type="curve"),
+        toolbar=True,
+    )
+    plot = win.get_plot()
+
+    curve_raw = make.curve(
+        df['timestamp'].to_numpy(), df['value'].to_numpy(),
+        color="white", title="Surowe dane"
+    )
+    plot.add_item(curve_raw)
+
+    curve_smoothed = make.curve(
+        df_smoothed['timestamp'].to_numpy(), df_smoothed['value'].to_numpy(),
+        color="blue", title="Wygładzone"
+    )
+    plot.add_item(curve_smoothed)
+
+    plot.setAxisScaleDraw(plot.xBottom, DateTimeScaleDraw())
+    plot.set_axis_title("bottom", "Czas")
+    plot.set_axis_title("left", "Value")
+    plot.set_axis_title("right", "Pochodna")
+
+    # włączenie prawej osi (domyślnie bywa ukryta)
+    plot.enableAxis(plot.yRight, True)
+
+    # legenda, żeby rozróżnić krzywe
+    legend = make.legend("TR")
+    plot.add_item(legend)
+
+    win.exec_()
+
 class DateTimeScaleDraw(QwtScaleDraw):
     def label(self, value):
         try:
@@ -111,6 +148,16 @@ def split_by_day(df):
         for _, group in df.groupby('date')
     ]
 
+def df_smooth(df, window_width):
+    df_smoothed = df.copy()
+    df_smoothed['value'] = df['value'].rolling(window=window_width, center=True, min_periods=1).mean()
+    return df_smoothed
+
+def df_derivative_gradient(df):
+    df_deriv = df.copy()
+    df_deriv['derivative'] = np.gradient(df['value'].to_numpy(), df['timestamp'].to_numpy())
+    return df_deriv
+
 def main():
     # df = load_data_sqlite()
 
@@ -128,9 +175,11 @@ def main():
 
     # df_1, df_2 = split_by_timestamp_continuity(df)
 
-    df = load_data_csv("data/days/df_data_from_2026-07-19.csv")
+    df = load_data_csv("data/days/df_data_from_2026-07-15.csv")
 
-    show_gui(df)
+    df_smoothed = df_smooth(df, 10)
+    # show_gui(df)
+    show_comparison(df, df_smoothed)
     # plot_and_save(df, 11, 12)
     # plot_and_save(df, 12, 13)
     # plot_and_save(df, 19, 20)
