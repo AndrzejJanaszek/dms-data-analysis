@@ -12,7 +12,7 @@ from plotpy.plot import PlotDialog, PlotOptions
 import datetime
 from qwt import QwtScaleDraw, QwtText
 
-def load_data():
+def load_data_sqlite():
     # Load data from .db
     conn = sqlite3.connect('data/measurements.db')
     df = pd.read_sql_query("SELECT * FROM measurements WHERE value > 1000", conn)
@@ -62,7 +62,7 @@ def show_gui(df):
         toolbar=True,
     )
     plot = win.get_plot()
-    curve = make.curve(x, y, color="b")
+    curve = make.curve(x, y, color="w")
     plot.add_item(curve)
 
     plot.setAxisScaleDraw(plot.xBottom, DateTimeScaleDraw())
@@ -73,11 +73,63 @@ def show_gui(df):
 
 class DateTimeScaleDraw(QwtScaleDraw):
     def label(self, value):
-        dt = datetime.datetime.fromtimestamp(value, tz=datetime.timezone.utc)
-        return QwtText(dt.strftime('%H:%M:%S\n%d-%m-%Y'))
+        try:
+            dt = datetime.datetime.fromtimestamp(value)
+            text = dt.strftime("%H:%M:%S\n%d-%m-%Y")
+        except (ValueError, OSError, OverflowError):
+            text = ""
+        return QwtText(text)
+
+# split df if two series overlap
+def split_by_timestamp_continuity(df):
+    last_timestamp = 0
+    split_idx = -1
+    for idx, row in df.iterrows():
+        if row['timestamp'] > last_timestamp:
+            last_timestamp = row['timestamp']
+        else:
+            split_idx = idx
+            break
+
+    if split_idx > 0 :
+        df_1 = df.iloc[:split_idx].reset_index(drop=True)
+        df_2 = df.iloc[split_idx:].reset_index(drop=True)
+        return df_1, df_2
+    else :
+        return df
+
+def load_data_csv(path: str) -> pd.DataFrame:
+    return pd.read_csv(path)
+
+def split_by_day(df):
+    df = df.copy()
+    df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
+    df['date'] = df['datetime'].dt.date
+
+    return [
+        group.drop(columns=['date']).reset_index(drop=True)
+        for _, group in df.groupby('date')
+    ]
 
 def main():
-    df = load_data()
+    # df = load_data_sqlite()
+
+
+    # ###### LOAD AND SPLIT BY DAY ######
+    # df = load_data_csv("data/df_2.csv")
+    # df_list = split_by_day(df)
+
+    # for e in df_list:
+    #     datetime: pd.Timestamp = e["datetime"][0]
+    #     date = datetime.date().strftime("%Y-%m-%d")
+    #     filename = "df_data_from_" + date + ".csv"
+    #     e.to_csv("data/days/" + filename, index=False)
+
+
+    # df_1, df_2 = split_by_timestamp_continuity(df)
+
+    df = load_data_csv("data/days/df_data_from_2026-07-19.csv")
+
     show_gui(df)
     # plot_and_save(df, 11, 12)
     # plot_and_save(df, 12, 13)
