@@ -72,7 +72,7 @@ def show_gui(df):
 
     win.exec_()
 
-def show_comparison(df, df_smoothed):
+def show_comparison(df, df_smoothed, df_derivative = None, df_sec_derivative = None, intervals = None):
     app = QApplication(sys.argv)
 
     win = PlotDialog(
@@ -84,15 +84,37 @@ def show_comparison(df, df_smoothed):
 
     curve_raw = make.curve(
         df['timestamp'].to_numpy(), df['value'].to_numpy(),
-        color="white", title="Surowe dane"
+        color="blue", title="Surowe dane"
     )
     plot.add_item(curve_raw)
 
     curve_smoothed = make.curve(
         df_smoothed['timestamp'].to_numpy(), df_smoothed['value'].to_numpy(),
-        color="blue", title="Wygładzone"
+        color="white", title="Wygładzone"
     )
     plot.add_item(curve_smoothed)
+
+    if df_derivative is not None: 
+        curve_derivative = make.curve(
+            df_derivative['timestamp'].to_numpy(), df_derivative['value'].to_numpy(),
+            color="red", title="Pochodna",
+            yaxis="right"
+        )
+        plot.add_item(curve_derivative)
+
+    if df_sec_derivative is not None: 
+            curve_sec_derivative = make.curve(
+                df_sec_derivative['timestamp'].to_numpy(), df_sec_derivative['value'].to_numpy(),
+                color="green", title="druga Pochodna",
+                yaxis="right"
+            )
+            plot.add_item(curve_sec_derivative)
+
+
+    if intervals is not None:
+        for xmin, xmax in intervals:
+            range_item = make.range(xmin, xmax)
+            plot.add_item(range_item)
 
     plot.setAxisScaleDraw(plot.xBottom, DateTimeScaleDraw())
     plot.set_axis_title("bottom", "Czas")
@@ -155,15 +177,53 @@ def df_smooth(df, window_width):
 
 def df_derivative_gradient(df):
     df_deriv = df.copy()
-    df_deriv['derivative'] = np.gradient(df['value'].to_numpy(), df['timestamp'].to_numpy())
+    df_deriv['value'] = np.gradient(df['value'].to_numpy(), df['timestamp'].to_numpy())
     return df_deriv
 
+def find_intervals_below_threshold(df_derivative, threshold):
+    mask = (df_derivative['value'] < threshold).to_numpy()
+    timestamps = df_derivative['timestamp'].to_numpy()
+
+    # wykryj miejsca, gdzie maska się zmienia (False->True, True->False)
+    diff = np.diff(mask.astype(int))
+    starts = np.where(diff == 1)[0] + 1   # początki przedziałów True
+    ends = np.where(diff == -1)[0] + 1    # końce przedziałów True
+
+    # obsłuż przypadek, gdy szereg zaczyna/kończy się w stanie True
+    if mask[0]:
+        starts = np.insert(starts, 0, 0)
+    if mask[-1]:
+        ends = np.append(ends, len(mask))
+
+    intervals = [
+        (timestamps[s], timestamps[e - 1])
+        for s, e in zip(starts, ends)
+    ]
+    return intervals
+
+def get_values_from_intervals(df, intervals):
+    results = []
+    for start, end in intervals:
+        value_start = df.loc[df["timestamp"] == start, 'value'].iloc[0]
+        value_end = df.loc[df["timestamp"] == end, 'value'].iloc[0]
+        results.append({
+            "s_value": value_start,
+            "e_value": value_start,
+            "s_timestamp": start,
+            "e_timestamp": end,
+            "dxdy": (value_end - value_start) / (end - start),
+            "dx": value_end - value_start,
+            "dy": end - start,
+        })
+
+    return results
+        # results.append((start, value_start, end, value_end, dxdy))
 def main():
     # df = load_data_sqlite()
 
 
     # ###### LOAD AND SPLIT BY DAY ######
-    # df = load_data_csv("data/df_2.csv")
+    # df = load_data_csv("data/df_2.csv")=
     # df_list = split_by_day(df)
 
     # for e in df_list:
@@ -175,11 +235,37 @@ def main():
 
     # df_1, df_2 = split_by_timestamp_continuity(df)
 
-    df = load_data_csv("data/days/df_data_from_2026-07-15.csv")
+    df = load_data_csv("data/days/df_data_from_2026-07-16.csv")
 
     df_smoothed = df_smooth(df, 10)
+    # df_smoothed_100 = df_smooth(df, 100)
+    df_deriv = df_derivative_gradient(df_smoothed)
+    df_smoothed_deriv = df_smooth(df_deriv, 10)
+    df_sec_deriv = df_derivative_gradient(df_smoothed_deriv)
+
+    intervals = find_intervals_below_threshold(df_deriv, -5)
+
+    intervals_cuted = []
+    for s, e in intervals:
+        if (e - s) > 0 and (e - s) < 6:
+            intervals_cuted.append((s,e))
+
+    value_intervals = get_values_from_intervals(df_smoothed, intervals_cuted)
+
+    # dxdy_values = [r["dy"] for r in value_intervals]
+    # plt.hist(dxdy_values, bins=20, color="steelblue", edgecolor="black")
+    # plt.xlabel("dxdy")
+    # plt.ylabel("Liczba wystąpień")
+    # plt.title("Histogram dxdy")
+    # plt.grid(alpha=0.3)
+    # plt.show()
+
     # show_gui(df)
-    show_comparison(df, df_smoothed)
+    show_comparison(df=df,
+                    df_smoothed=df_smoothed,
+                    df_derivative=df_deriv,
+                    intervals=intervals_cuted)
+    # show_comparison(df_smoothed_100, df_smoothed, df_deriv, intervals)
     # plot_and_save(df, 11, 12)
     # plot_and_save(df, 12, 13)
     # plot_and_save(df, 19, 20)
