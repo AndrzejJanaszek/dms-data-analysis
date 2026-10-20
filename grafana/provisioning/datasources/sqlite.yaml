@@ -16,3 +16,8 @@ datasources:
     type: frser-sqlite-datasource
     jsonData:
       path: /data/meas-signs-temps_2026-10-18_no-temps-problem/testy_manualne_all.db
+  - name: przygotowane sygnały
+    uid: sqlite-prepared
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/prepared/signals.db

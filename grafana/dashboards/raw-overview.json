@@ -20,7 +20,8 @@
         "current": {
           "text": "2026-10-18 obiekt",
           "value": "sqlite-2026-10-18"
-        }
+        },
+        "regex": "/^(?!przygotowane)/"
       },
       {
         "name": "session",
@@ -280,7 +281,7 @@
     {
       "id": 3,
       "type": "timeseries",
-      "title": "Sygnały (piny)",
+      "title": "Sygnały surowe (piny)",
       "datasource": {
         "type": "frser-sqlite-datasource",
         "uid": "${db}"
@@ -352,6 +353,198 @@
       ]
     },
     {
+      "id": 5,
+      "type": "state-timeline",
+      "title": "Sygnały: surowe i po obróbce (zielone: zdarzenie, czerwone: odrzucone krótkie)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n),\ns AS (\n  SELECT pin, kind, timestamp, state FROM signal_changes\n  WHERE source = '${db}' AND session_id = $session AND pin IN (SELECT pin FROM sel)\n),\nbefore AS (\n  SELECT pin, kind, state, MAX(timestamp) FROM s WHERE timestamp < (${__from} / 1000.0) GROUP BY pin, kind\n),\ninside AS (\n  SELECT timestamp AS time, pin, kind, state FROM s WHERE timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, kind, state FROM (\n    SELECT pin, kind, state, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before UNION ALL SELECT time, pin, kind, state FROM inside)\n    GROUP BY pin, kind\n  )\n)\nSELECT time, 'pin ' || pin || ' – ' || kind AS metric, state AS value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before\n  UNION ALL SELECT time, pin, kind, state FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, kind, state FROM last\n)\nORDER BY time, metric",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n),\ns AS (\n  SELECT pin, kind, timestamp, state FROM signal_changes\n  WHERE source = '${db}' AND session_id = $session AND pin IN (SELECT pin FROM sel)\n),\nbefore AS (\n  SELECT pin, kind, state, MAX(timestamp) FROM s WHERE timestamp < (${__from} / 1000.0) GROUP BY pin, kind\n),\ninside AS (\n  SELECT timestamp AS time, pin, kind, state FROM s WHERE timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, kind, state FROM (\n    SELECT pin, kind, state, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before UNION ALL SELECT time, pin, kind, state FROM inside)\n    GROUP BY pin, kind\n  )\n)\nSELECT time, 'pin ' || pin || ' – ' || kind AS metric, state AS value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before\n  UNION ALL SELECT time, pin, kind, state FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, kind, state FROM last\n)\nORDER BY time, metric",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "transparent"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "",
+                  "color": "transparent",
+                  "index": 0
+                },
+                "1": {
+                  "text": "impuls",
+                  "color": "blue",
+                  "index": 1
+                },
+                "2": {
+                  "text": "zdarzenie",
+                  "color": "green",
+                  "index": 2
+                },
+                "3": {
+                  "text": "odrzucone",
+                  "color": "red",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 85,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "rowHeight": 0.8,
+        "alignValue": "left",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Odrzucone krótkie zdarzenia w sesji (klik w początek: przybliż ±30 s)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n)\nSELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE source = '${db}' AND session_id = $session AND rejected = 1 AND pin IN (SELECT pin FROM sel)\nORDER BY start",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n)\nSELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE source = '${db}' AND session_id = $session AND rejected = 1 AND pin IN (SELECT pin FROM sel)\nORDER BY start",
+          "queryType": "table",
+          "timeColumns": [
+            "początek",
+            "koniec"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "początek"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Przybliż",
+                    "url": "/d/dms-raw-overview/?${db:queryparam}&${session:queryparam}&${pin:queryparam}&${only_changing:queryparam}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "początek|koniec"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
       "id": 4,
       "type": "timeseries",
       "title": "Temperatury [°C]",
@@ -362,7 +555,7 @@
       "interval": "1s",
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 43,
         "w": 24,
         "h": 10
       },

@@ -443,6 +443,7 @@ dependencies = [
     { name = "pandas" },
     { name = "plotly" },
     { name = "plotly-resampler" },
+    { name = "pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -459,6 +460,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.6" },
     { name = "plotly", specifier = ">=6.9.0" },
     { name = "plotly-resampler", specifier = ">=0.11.1" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
 ]
 
 [package.metadata.requires-dev]
