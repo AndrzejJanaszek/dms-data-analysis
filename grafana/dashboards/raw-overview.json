@@ -1,0 +1,436 @@
+{
+  "uid": "dms-raw-overview",
+  "title": "Przegląd surowych danych",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "time": {
+    "from": "2026-09-23T11:00:00.000Z",
+    "to": "2026-10-04T15:00:00.000Z"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "db",
+        "label": "Baza",
+        "type": "datasource",
+        "query": "frser-sqlite-datasource",
+        "current": {
+          "text": "2026-10-18 obiekt",
+          "value": "sqlite-2026-10-18"
+        }
+      },
+      {
+        "name": "session",
+        "label": "Sesja",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT id AS __value, 'Sesja ' || id || ' (' || datetime(started_at, 'unixepoch', 'localtime') || ')' AS __text FROM sessions ORDER BY id DESC",
+        "refresh": 1,
+        "current": {
+          "text": "9",
+          "value": "9"
+        }
+      },
+      {
+        "name": "session_from",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT CAST(MIN(t) * 1000 AS INTEGER) FROM (\n  SELECT MIN(timestamp) AS t FROM measurements WHERE session_id = $session\n  UNION ALL SELECT MIN(timestamp) FROM pin_states WHERE session_id = $session\n  UNION ALL SELECT MIN(timestamp) FROM temperature_measurements WHERE session_id = $session\n)",
+        "refresh": 1
+      },
+      {
+        "name": "session_to",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT CAST(MAX(t) * 1000 AS INTEGER) + 1 FROM (\n  SELECT MAX(timestamp) AS t FROM measurements WHERE session_id = $session\n  UNION ALL SELECT MAX(timestamp) FROM pin_states WHERE session_id = $session\n  UNION ALL SELECT MAX(timestamp) FROM temperature_measurements WHERE session_id = $session\n)",
+        "refresh": 1
+      },
+      {
+        "name": "only_changing",
+        "label": "Tylko zmieniające się piny",
+        "type": "custom",
+        "query": "tak,nie",
+        "current": {
+          "text": "tak",
+          "value": "tak"
+        },
+        "options": [
+          {
+            "text": "tak",
+            "value": "tak",
+            "selected": true
+          },
+          {
+            "text": "nie",
+            "value": "nie",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "pin",
+        "label": "Piny",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT DISTINCT pin FROM pin_states WHERE session_id = $session ORDER BY pin",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Sesje (klik w numer sesji: wybór sesji i jej zakresu czasu)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "SELECT s.id AS sesja, d.first_at AS od, d.last_at AS do,\n  printf('%.1f h', (d.last_at - d.first_at) / 3600.0) AS czas,\n  d.weight_count AS wskazania, d.pin_count AS \"zmiany pinów\", d.temperature_count AS temperatury,\n  CAST(d.first_at * 1000 AS INTEGER) AS from_ms, CAST(d.last_at * 1000 AS INTEGER) + 1 AS to_ms\nFROM sessions s\nJOIN (\n  SELECT session_id, MIN(timestamp) AS first_at, MAX(timestamp) AS last_at,\n         SUM(kind = 'w') AS weight_count, SUM(kind = 'p') AS pin_count, SUM(kind = 't') AS temperature_count\n  FROM (\n    SELECT session_id, timestamp, 'w' AS kind FROM measurements\n    UNION ALL SELECT session_id, timestamp, 'p' FROM pin_states\n    UNION ALL SELECT session_id, timestamp, 't' FROM temperature_measurements\n  )\n  GROUP BY session_id\n) d ON d.session_id = s.id\nORDER BY s.id",
+          "rawQueryText": "SELECT s.id AS sesja, d.first_at AS od, d.last_at AS do,\n  printf('%.1f h', (d.last_at - d.first_at) / 3600.0) AS czas,\n  d.weight_count AS wskazania, d.pin_count AS \"zmiany pinów\", d.temperature_count AS temperatury,\n  CAST(d.first_at * 1000 AS INTEGER) AS from_ms, CAST(d.last_at * 1000 AS INTEGER) + 1 AS to_ms\nFROM sessions s\nJOIN (\n  SELECT session_id, MIN(timestamp) AS first_at, MAX(timestamp) AS last_at,\n         SUM(kind = 'w') AS weight_count, SUM(kind = 'p') AS pin_count, SUM(kind = 't') AS temperature_count\n  FROM (\n    SELECT session_id, timestamp, 'w' AS kind FROM measurements\n    UNION ALL SELECT session_id, timestamp, 'p' FROM pin_states\n    UNION ALL SELECT session_id, timestamp, 't' FROM temperature_measurements\n  )\n  GROUP BY session_id\n) d ON d.session_id = s.id\nORDER BY s.id",
+          "queryType": "table",
+          "timeColumns": [
+            "od",
+            "do"
+          ]
+        }
+      ],
+      "transformations": [],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sesja"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Pokaż sesję",
+                    "url": "/d/dms-raw-overview/?${db:queryparam}&var-session=${__data.fields.sesja}&${only_changing:queryparam}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Wskazania [kg] (min i max w przedziale)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "interval": "1s",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, MIN(value) AS min, MAX(value) AS max\nFROM measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, MIN(value) AS min, MAX(value) AS max\nFROM measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1\nORDER BY 1",
+          "queryType": "time series",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max"
+            },
+            "properties": [
+              {
+                "id": "custom.fillBelowTo",
+                "value": "min"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Sygnały (piny)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM pin_states\n  WHERE session_id = $session AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT value) > 1\n),\nbefore AS (\n  SELECT pin, value, MAX(timestamp) FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp < (${__from} / 1000.0)\n  GROUP BY pin\n),\ninside AS (\n  SELECT timestamp AS time, pin, value FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, value FROM (\n    SELECT pin, value, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, value FROM before UNION ALL SELECT time, pin, value FROM inside)\n    GROUP BY pin\n  )\n)\nSELECT time, 'pin ' || pin AS metric, value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, value FROM before\n  UNION ALL SELECT time, pin, value FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, value FROM last\n)\nORDER BY time",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM pin_states\n  WHERE session_id = $session AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT value) > 1\n),\nbefore AS (\n  SELECT pin, value, MAX(timestamp) FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp < (${__from} / 1000.0)\n  GROUP BY pin\n),\ninside AS (\n  SELECT timestamp AS time, pin, value FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, value FROM (\n    SELECT pin, value, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, value FROM before UNION ALL SELECT time, pin, value FROM inside)\n    GROUP BY pin\n  )\n)\nSELECT time, 'pin ' || pin AS metric, value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, value FROM before\n  UNION ALL SELECT time, pin, value FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, value FROM last\n)\nORDER BY time",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "max": 1.05,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Temperatury [°C]",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "interval": "1s",
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperature_measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperature_measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "title": "Cała sesja",
+      "type": "link",
+      "icon": "dashboard",
+      "tooltip": "Ustaw zakres czasu na całą wybraną sesję",
+      "url": "/d/dms-raw-overview/?${db:queryparam}&${session:queryparam}&${pin:queryparam}&${only_changing:queryparam}&from=${session_from}&to=${session_to}",
+      "targetBlank": false,
+      "keepTime": false,
+      "includeVars": false
+    }
+  ]
+}
