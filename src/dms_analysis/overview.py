@@ -8,6 +8,7 @@ from dms_analysis.raw import SessionData
 PIN_SPACING = 1.5
 PIN_HIGH = 1.0
 FIGURE_HEIGHT = 1200
+CLEANING_FIGURE_HEIGHT = 1000
 FIGURE_WIDTH = 1200
 
 
@@ -49,7 +50,7 @@ def session_figure(
 
     _add_weight(figure, data.weight)
     shown_pins = data.pins if pins is None else data.pins[data.pins["pin"].isin(pins)]
-    _add_pins(figure, shown_pins, _session_end(data))
+    _add_pins(figure, shown_pins, data.end, row=2)
     _add_temperatures(figure, data.temperatures)
 
     figure.update_layout(
@@ -74,12 +75,47 @@ def _add_weight(figure: FigureWidgetResampler, weight: pd.DataFrame) -> None:
     )
 
 
-def _session_end(data: SessionData) -> pd.Timestamp:
-    frames = (data.weight, data.pins, data.temperatures)
-    return max(frame["timestamp"].max() for frame in frames if not frame.empty)
+def cleaning_figure(
+    data: SessionData,
+    cleaned: pd.DataFrame,
+    title: str,
+    pins: list[int],
+    width: int = FIGURE_WIDTH,
+) -> FigureWidgetResampler:
+    figure = FigureWidgetResampler(
+        make_subplots(
+            rows=3,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.05,
+            row_heights=[0.5, 0.25, 0.25],
+            subplot_titles=("Wskazania [kg]", "Sygnały surowe", "Sygnały po obróbce"),
+        )
+    )
+
+    _add_weight(figure, data.weight)
+    _add_pins(figure, data.pins[data.pins["pin"].isin(pins)], data.end, row=2, label="surowy pin")
+    _add_pins(figure, cleaned[cleaned["pin"].isin(pins)], data.end, row=3, label="pin")
+
+    figure.update_layout(
+        title=title,
+        height=CLEANING_FIGURE_HEIGHT,
+        width=width,
+        autosize=False,
+        hovermode="x unified",
+        legend={"groupclick": "toggleitem"},
+        margin={"l": 60, "r": 20, "t": 80, "b": 40},
+    )
+    return figure
 
 
-def _add_pins(figure: FigureWidgetResampler, pins: pd.DataFrame, end: pd.Timestamp) -> None:
+def _add_pins(
+    figure: FigureWidgetResampler,
+    pins: pd.DataFrame,
+    end: pd.Timestamp,
+    row: int,
+    label: str = "pin",
+) -> None:
     pin_numbers = sorted(pins["pin"].unique())
 
     for position, pin in enumerate(pin_numbers):
@@ -87,15 +123,15 @@ def _add_pins(figure: FigureWidgetResampler, pins: pd.DataFrame, end: pd.Timesta
         base = position * PIN_SPACING
         figure.add_trace(
             go.Scattergl(
-                name=f"pin {pin}",
+                name=f"{label} {pin}",
                 mode="lines",
                 line={"width": 1, "shape": "hv"},
-                legendgroup="piny",
+                legendgroup=label,
             ),
             hf_x=changes["timestamp"],
             hf_y=base + changes["value"] * PIN_HIGH,
             max_n_samples=len(changes),
-            row=2,
+            row=row,
             col=1,
         )
 
@@ -104,7 +140,7 @@ def _add_pins(figure: FigureWidgetResampler, pins: pd.DataFrame, end: pd.Timesta
         ticktext=[f"pin {pin}" for pin in pin_numbers],
         range=[-0.5, max(len(pin_numbers) - 1, 0) * PIN_SPACING + PIN_HIGH + 0.5],
         fixedrange=True,
-        row=2,
+        row=row,
         col=1,
     )
 

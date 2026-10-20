@@ -13,6 +13,11 @@ class SessionData:
     pins: pd.DataFrame
     temperatures: pd.DataFrame
 
+    @property
+    def end(self) -> pd.Timestamp:
+        frames = (self.weight, self.pins, self.temperatures)
+        return max(frame["timestamp"].max() for frame in frames if not frame.empty)
+
 
 def find_databases(data_dir: Path) -> list[Path]:
     return sorted(path for path in data_dir.rglob("*.db") if _has_sessions(path))
