@@ -12,35 +12,59 @@ PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 GRAFANA_DATASOURCES = PROJECT_DIR / "grafana" / "provisioning" / "datasources" / "sqlite.yaml"
 GRAFANA_DATA_DIR = "/data"
-PREPARED_DB = DATA_DIR / "prepared" / "signals.db"
+PREPARED_DB = DATA_DIR / "prepared" / "prepared.db"
 
 INACTIVE = 0
 RAW_ACTIVE = 1
 EVENT = 2
 REJECTED = 3
 
+TABLES = {
+    "sessions": "source, session_id",
+    "weight": "source, session_id, timestamp",
+    "temperatures": "source, session_id, timestamp",
+    "signal_changes": "variant, source, session_id, pin, timestamp",
+    "signal_events": "variant, source, session_id",
+    "variants": "",
+}
+
 RAW_KIND = "surowy"
 PREPARED_KIND = "zdarzenia"
 
 
 def main() -> None:
-    changes = []
-    events = []
+    tables: dict[str, list[pd.DataFrame]] = {name: [] for name in TABLES}
 
-    for source, db_path in raw_databases():
-        for session_id in load_sessions(db_path)["session_id"]:
+    for source, name, db_path in raw_databases():
+        sessions = load_sessions(db_path)
+        tables["sessions"].append(sessions_rows(sessions).assign(source=source, source_name=name))
+
+        for session_id in sessions["session_id"]:
             data = load_session(db_path, int(session_id))
+            keys = {"source": source, "session_id": int(session_id)}
+            tables["weight"].append(data.weight.pipe(_epoch_seconds, "timestamp").assign(**keys))
+            tables["temperatures"].append(data.temperatures.pipe(_epoch_seconds, "timestamp").assign(**keys))
             if data.pins.empty:
                 continue
-            for name, variant in VARIANTS.items():
+            for variant_name, variant in VARIANTS.items():
                 signal_events = detect_events(data.pins, data.end, variant=variant)
-                keys = {"variant": name, "source": source, "session_id": int(session_id)}
-                changes.append(signal_changes(data.pins, signal_events).assign(**keys))
-                events.append(events_rows(signal_events).assign(**keys))
+                variant_keys = {"variant": variant_name, **keys}
+                tables["signal_changes"].append(signal_changes(data.pins, signal_events).assign(**variant_keys))
+                tables["signal_events"].append(events_rows(signal_events).assign(**variant_keys))
         print(f"{source}: {db_path.relative_to(DATA_DIR)}")
 
-    write(pd.concat(changes, ignore_index=True), pd.concat(events, ignore_index=True), variants_rows())
+    tables["variants"].append(variants_rows())
+    write({name: pd.concat(frames, ignore_index=True) for name, frames in tables.items()})
     print(f"zapisano {PREPARED_DB.relative_to(PROJECT_DIR)}, warianty: {', '.join(VARIANTS)}")
+
+
+def sessions_rows(sessions: pd.DataFrame) -> pd.DataFrame:
+    table = sessions[
+        ["session_id", "started_at", "first_at", "last_at", "weight_count", "pin_count", "temperature_count"]
+    ]
+    for column in ("started_at", "first_at", "last_at"):
+        table = table.pipe(_epoch_seconds, column)
+    return table
 
 
 def variants_rows() -> pd.DataFrame:
@@ -69,7 +93,7 @@ def _git(*arguments: str) -> str:
     return result.stdout.strip()
 
 
-def raw_databases() -> list[tuple[str, Path]]:
+def raw_databases() -> list[tuple[str, str, Path]]:
     config = yaml.safe_load(GRAFANA_DATASOURCES.read_text())
     sources = []
 
@@ -77,7 +101,7 @@ def raw_databases() -> list[tuple[str, Path]]:
         path = Path(datasource["jsonData"]["path"])
         local = DATA_DIR / path.relative_to(GRAFANA_DATA_DIR)
         if local != PREPARED_DB:
-            sources.append((datasource["uid"], local))
+            sources.append((datasource["uid"], datasource["name"], local))
 
     return sources
 
@@ -134,19 +158,17 @@ def events_rows(signal_events: SignalEvents) -> pd.DataFrame:
     return table.pipe(_epoch_seconds, "start").pipe(_epoch_seconds, "end")
 
 
-def write(changes: pd.DataFrame, events: pd.DataFrame, variants: pd.DataFrame) -> None:
+def write(tables: dict[str, pd.DataFrame]) -> None:
     PREPARED_DB.parent.mkdir(parents=True, exist_ok=True)
     temporary = PREPARED_DB.with_suffix(".tmp")
     temporary.unlink(missing_ok=True)
 
     with sqlite3.connect(temporary) as connection:
-        changes.to_sql("signal_changes", connection, index=False)
-        events.to_sql("signal_events", connection, index=False)
-        variants.to_sql("variants", connection, index=False)
-        connection.execute(
-            "CREATE INDEX signal_changes_session ON signal_changes (variant, source, session_id, pin, timestamp)"
-        )
-        connection.execute("CREATE INDEX signal_events_session ON signal_events (variant, source, session_id)")
+        for name, table in tables.items():
+            table.to_sql(name, connection, index=False)
+        for name, columns in TABLES.items():
+            if columns:
+                connection.execute(f"CREATE INDEX {name}_session ON {name} ({columns})")
     temporary.replace(PREPARED_DB)
 
 

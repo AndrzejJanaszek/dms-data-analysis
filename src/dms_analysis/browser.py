@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import ipywidgets as widgets
@@ -7,6 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from dms_analysis.compare import CATEGORIES, UNCHANGED, compare_events
+from dms_analysis.prepared import load_session, load_sessions, load_sources, load_variants
 from dms_analysis.raw import SessionData
 from dms_analysis.signals import PIN_ROLES, SignalEvents, cleaned_changes
 
@@ -25,6 +27,12 @@ MIN_WEIGHT_MARGIN_KG = 20
 ALL_ROLES = "wszystkie"
 ALL_DIFFERENCES = "wszystkie różnice"
 ALL_CATEGORIES = "wszystkie"
+ACCEPTED = "przyjęte"
+REJECTED = "odrzucone"
+ALL_STATUSES = "wszystkie"
+DEFAULT_SOURCE = "sqlite-2026-10-18"
+DEFAULT_SESSION = 9
+MAX_DURATION_SECONDS = 100_000.0
 
 Selection = Callable[[pd.DataFrame, str, float, float], pd.DataFrame]
 
@@ -170,6 +178,75 @@ class DiffBrowser:
         )
 
 
+class PreparedBrowser:
+    def __init__(self, db_path: Path, title: str = "Przygotowane dane", width: int = FIGURE_WIDTH) -> None:
+        self._db_path = db_path
+        self._title = title
+        self._events = pd.DataFrame()
+        self._loading = False
+        empty = pd.DataFrame()
+        self._viewer = _Viewer(SessionData(empty, empty, empty), [("po obróbce", empty)], title, width)
+
+        sources = load_sources(db_path)
+        variants = load_variants(db_path)
+        self._source = widgets.Dropdown(
+            options=list(zip(sources["source_name"], sources["source"], strict=True)), description="baza"
+        )
+        if DEFAULT_SOURCE in set(sources["source"]):
+            self._source.value = DEFAULT_SOURCE
+        self._session = widgets.Dropdown(description="sesja")
+        self._variant = widgets.Dropdown(
+            options=[(f"{row.variant} – {row.description}", row.variant) for row in variants.itertuples()],
+            description="wariant",
+            layout={"width": "520px"},
+        )
+        self._role = widgets.Dropdown(options=[*PIN_ROLES.values(), ALL_ROLES], description="rola")
+        self._status = widgets.Dropdown(options=[ALL_STATUSES, ACCEPTED, REJECTED], description="status")
+        self._low = widgets.FloatText(value=0, description="od [s]", layout={"width": "160px"})
+        self._high = widgets.FloatText(value=MAX_DURATION_SECONDS, description="do [s]", layout={"width": "200px"})
+
+        self._source.observe(lambda _: self._source_changed(), names="value")
+        for control in (self._session, self._variant):
+            control.observe(lambda _: self._load(), names="value")
+        for control in (self._role, self._status, self._low, self._high):
+            control.observe(lambda _: self._select(), names="value")
+
+        self.widget = widgets.VBox(
+            [
+                widgets.HBox([self._source, self._session, self._variant]),
+                self._viewer.widget([self._role, self._status, self._low, self._high]),
+            ]
+        )
+        self._source_changed(DEFAULT_SESSION)
+
+    def _source_changed(self, session: int | None = None) -> None:
+        sessions = load_sessions(self._db_path, self._source.value)
+        options = [
+            (f"sesja {row.session_id} ({row.first_at:%Y-%m-%d %H:%M} – {row.last_at:%Y-%m-%d %H:%M})", row.session_id)
+            for row in sessions.itertuples()
+        ]
+        self._loading = True
+        self._session.options = options
+        ids = [value for _, value in options]
+        self._session.value = session if session in ids else (ids[-1] if ids else None)
+        self._loading = False
+        self._load()
+
+    def _load(self) -> None:
+        if self._loading or self._session.value is None:
+            return
+        prepared = load_session(self._db_path, self._source.value, int(self._session.value), self._variant.value)
+        self._events = prepared.events
+        self._viewer.set_source(prepared.data, [("po obróbce", prepared.cleaned)])
+        self._select()
+
+    def _select(self) -> None:
+        events = self._events
+        if self._status.value != ALL_STATUSES:
+            events = events[events["rejected"] == (self._status.value == REJECTED)]
+        self._viewer.set_windows(events_by_duration(events, self._role.value, self._low.value, self._high.value))
+
+
 class _Viewer:
     def __init__(self, data: SessionData, layers: list[tuple[str, pd.DataFrame]], title: str, width: int) -> None:
         self._data = data
@@ -201,6 +278,10 @@ class _Viewer:
                 self._figure,
             ]
         )
+
+    def set_source(self, data: SessionData, layers: list[tuple[str, pd.DataFrame]]) -> None:
+        self._data = data
+        self._layers = layers
 
     def set_windows(self, windows: pd.DataFrame) -> None:
         self._windows = windows.reset_index(drop=True)

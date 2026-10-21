@@ -44,7 +44,7 @@ def load_sessions(db_path: Path) -> pd.DataFrame:
     sessions = _query(db_path, query)
 
     for column in ("started_at", "first_at", "last_at"):
-        sessions[column] = _to_datetime(sessions[column])
+        sessions[column] = to_datetime(sessions[column])
 
     sessions["duration"] = sessions["last_at"] - sessions["first_at"]
     return sessions
@@ -69,7 +69,7 @@ def load_session(db_path: Path, session_id: int) -> SessionData:
     )
 
     for frame in (weight, pins, temperatures):
-        frame["timestamp"] = _to_datetime(frame["timestamp"])
+        frame["timestamp"] = to_datetime(frame["timestamp"])
 
     return SessionData(weight=weight, pins=pins, temperatures=temperatures)
 
@@ -84,5 +84,5 @@ def _query(db_path: Path, sql: str, *params: object) -> pd.DataFrame:
         return pd.read_sql_query(sql, connection, params=params)
 
 
-def _to_datetime(seconds: pd.Series) -> pd.Series:
+def to_datetime(seconds: pd.Series) -> pd.Series:
     return pd.to_datetime(seconds, unit="s", utc=True).dt.tz_convert(TIMEZONE)
