@@ -1,12 +1,11 @@
 import sqlite3
-import subprocess
 from pathlib import Path
 
 import pandas as pd
 import yaml
 
 from dms_analysis.raw import load_session, load_sessions
-from dms_analysis.signals import ACTIVE_LEVEL, CURRENT_VARIANT, PIN_ROLES, VARIANTS, SignalEvents, detect_events
+from dms_analysis.signals import ACTIVE_LEVEL, SignalEvents, detect_events
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
@@ -32,41 +31,14 @@ def main() -> None:
             data = load_session(db_path, int(session_id))
             if data.pins.empty:
                 continue
-            for name, variant in VARIANTS.items():
-                signal_events = detect_events(data.pins, data.end, variant=variant)
-                keys = {"variant": name, "source": source, "session_id": int(session_id)}
-                changes.append(signal_changes(data.pins, signal_events).assign(**keys))
-                events.append(events_rows(signal_events).assign(**keys))
+            signal_events = detect_events(data.pins, data.end)
+            keys = {"source": source, "session_id": int(session_id)}
+            changes.append(signal_changes(data.pins, signal_events).assign(**keys))
+            events.append(events_rows(signal_events).assign(**keys))
         print(f"{source}: {db_path.relative_to(DATA_DIR)}")
 
-    write(pd.concat(changes, ignore_index=True), pd.concat(events, ignore_index=True), variants_rows())
-    print(f"zapisano {PREPARED_DB.relative_to(PROJECT_DIR)}, warianty: {', '.join(VARIANTS)}")
-
-
-def variants_rows() -> pd.DataFrame:
-    exported_at = pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds")
-    commit = _git("rev-parse", "--short", "HEAD")
-    dirty = _git("status", "--porcelain", "--", "src") != ""
-
-    return pd.DataFrame(
-        [
-            {
-                "variant": name,
-                "description": variant.description,
-                "current": int(name == CURRENT_VARIANT),
-                "rules": "; ".join(f"pin {pin} ({role}): {variant.rules(pin)}" for pin, role in PIN_ROLES.items()),
-                "default_rules": str(variant.default),
-                "commit": commit + ("+zmiany" if dirty else ""),
-                "exported_at": exported_at,
-            }
-            for name, variant in VARIANTS.items()
-        ]
-    )
-
-
-def _git(*arguments: str) -> str:
-    result = subprocess.run(["git", *arguments], cwd=PROJECT_DIR, capture_output=True, text=True, check=True)
-    return result.stdout.strip()
+    write(pd.concat(changes, ignore_index=True), pd.concat(events, ignore_index=True))
+    print(f"zapisano {PREPARED_DB.relative_to(PROJECT_DIR)}")
 
 
 def raw_databases() -> list[tuple[str, Path]]:
@@ -134,7 +106,7 @@ def events_rows(signal_events: SignalEvents) -> pd.DataFrame:
     return table.pipe(_epoch_seconds, "start").pipe(_epoch_seconds, "end")
 
 
-def write(changes: pd.DataFrame, events: pd.DataFrame, variants: pd.DataFrame) -> None:
+def write(changes: pd.DataFrame, events: pd.DataFrame) -> None:
     PREPARED_DB.parent.mkdir(parents=True, exist_ok=True)
     temporary = PREPARED_DB.with_suffix(".tmp")
     temporary.unlink(missing_ok=True)
@@ -142,11 +114,8 @@ def write(changes: pd.DataFrame, events: pd.DataFrame, variants: pd.DataFrame) -
     with sqlite3.connect(temporary) as connection:
         changes.to_sql("signal_changes", connection, index=False)
         events.to_sql("signal_events", connection, index=False)
-        variants.to_sql("variants", connection, index=False)
-        connection.execute(
-            "CREATE INDEX signal_changes_session ON signal_changes (variant, source, session_id, pin, timestamp)"
-        )
-        connection.execute("CREATE INDEX signal_events_session ON signal_events (variant, source, session_id)")
+        connection.execute("CREATE INDEX signal_changes_session ON signal_changes (source, session_id, pin, timestamp)")
+        connection.execute("CREATE INDEX signal_events_session ON signal_events (source, session_id)")
     temporary.replace(PREPARED_DB)
 
 
