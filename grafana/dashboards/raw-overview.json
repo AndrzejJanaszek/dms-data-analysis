@@ -966,6 +966,16 @@
       "targetBlank": false,
       "keepTime": false,
       "includeVars": false
+    },
+    {
+      "title": "Przygotowane dane",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Ta sama baza, sesja i zakres czasu na dashboardzie przygotowanych danych",
+      "url": "/d/dms-prepared-overview/?var-source=${db}&${session:queryparam}&${variant:queryparam}",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false
     }
   ]
 }
