@@ -5,7 +5,7 @@ Offline analysis of data collected on the concrete plant (weight readings, dispe
 - `src/dms_analysis/` — data preparation pipeline and analysis code
 - `notebooks/` — notebooks for looking at the data (`raw_overview.ipynb`: weight, pins and temperatures of one session on a shared time axis; `signals.ipynb`: signal events after merging pulses, rejected short events, signals before and after cleaning; `event_browser.ipynb`: step through events with a duration, or pairs of events with a gap, in a chosen range; `compare_variants.ipynb`: step through the differences between two rule variants; `prepared_browser.ipynb`: read-only browser of `prepared.db` — pick the database, session and variant as in Grafana, then step through the events with weight readings and signals)
 - `grafana/` — local Grafana (Docker) with a dashboard over the raw SQLite databases and a dashboard over the prepared data
-- `data/` — raw datasets
+- `data/` — raw datasets; `data/snapshots/` — compressed copy of the prepared dataset limited to the analysed session (site database, session 9), made by `uv run python -m dms_analysis.snapshot`; period, source commit and unpack command in its README
 - `legacy/` — the first exploratory script (`main.py`, old setup notes and plots), kept for reference only
 
 ## Signal preparation rules
