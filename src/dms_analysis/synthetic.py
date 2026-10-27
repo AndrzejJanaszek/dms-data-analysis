@@ -85,7 +85,7 @@ def draw_trials(samples: pd.DataFrame, dispenses: pd.DataFrame, same_hour: bool 
 
     trials = pd.DataFrame(rows)
     trials["end"] = trials["start"] + pd.to_timedelta(trials["duration_s"], unit="s")
-    trials["part_of_day"] = trials["start"].dt.hour.map(_part_of_day)
+    trials["part_of_day"] = trials["start"].dt.hour.map(part_of_day)
     return trials
 
 
@@ -229,7 +229,7 @@ def _step_fit(weight: pd.Series, start: pd.Timestamp, end: pd.Timestamp, window:
     return float(-coefficients[-1])
 
 
-def _part_of_day(hour: int) -> str:
+def part_of_day(hour: int) -> str:
     if hour in NIGHT_HOURS:
         return NIGHT
     if hour in DAY_HOURS:
