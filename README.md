@@ -21,10 +21,12 @@ uv sync
 ## Notebooks
 
 ```shell
-uv run jupyter lab notebooks/
+systemd-run --user --scope -p MemoryMax=3G -p MemorySwapMax=0 -p CPUWeight=50 uv run jupyter lab notebooks/
 ```
 
 or open a notebook in VS Code with the `.venv` interpreter as the kernel. The plots use `plotly-resampler`, which reloads detail on zoom, so they need a running kernel.
+
+The memory limit makes the kernel OOM kill Jupyter instead of freezing the whole machine (the VM has no swap). VS Code and Firefox get their limits from user systemd drop-ins (`scripts/vm-limits/` in the workspace).
 
 ## Grafana
 
