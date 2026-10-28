@@ -1,0 +1,981 @@
+{
+  "uid": "dms-raw-overview",
+  "title": "Przegląd surowych danych",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "time": {
+    "from": "2026-09-23T11:00:00.000Z",
+    "to": "2026-10-04T15:00:00.000Z"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "db",
+        "label": "Baza",
+        "type": "datasource",
+        "query": "frser-sqlite-datasource",
+        "current": {
+          "text": "2026-10-18 obiekt",
+          "value": "sqlite-2026-10-18"
+        },
+        "regex": "/^(?!przygotowane)/"
+      },
+      {
+        "name": "session",
+        "label": "Sesja",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT id AS __value, 'Sesja ' || id || ' (' || datetime(started_at, 'unixepoch', 'localtime') || ')' AS __text FROM sessions ORDER BY id DESC",
+        "refresh": 1,
+        "current": {
+          "text": "9",
+          "value": "9"
+        }
+      },
+      {
+        "name": "session_from",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT CAST(MIN(t) * 1000 AS INTEGER) FROM (\n  SELECT MIN(timestamp) AS t FROM measurements WHERE session_id = $session\n  UNION ALL SELECT MIN(timestamp) FROM pin_states WHERE session_id = $session\n  UNION ALL SELECT MIN(timestamp) FROM temperature_measurements WHERE session_id = $session\n)",
+        "refresh": 1
+      },
+      {
+        "name": "session_to",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT CAST(MAX(t) * 1000 AS INTEGER) + 1 FROM (\n  SELECT MAX(timestamp) AS t FROM measurements WHERE session_id = $session\n  UNION ALL SELECT MAX(timestamp) FROM pin_states WHERE session_id = $session\n  UNION ALL SELECT MAX(timestamp) FROM temperature_measurements WHERE session_id = $session\n)",
+        "refresh": 1
+      },
+      {
+        "name": "only_changing",
+        "label": "Tylko zmieniające się piny",
+        "type": "custom",
+        "query": "tak,nie",
+        "current": {
+          "text": "tak",
+          "value": "tak"
+        },
+        "options": [
+          {
+            "text": "tak",
+            "value": "tak",
+            "selected": true
+          },
+          {
+            "text": "nie",
+            "value": "nie",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "pin",
+        "label": "Piny",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT DISTINCT pin FROM pin_states WHERE session_id = $session ORDER BY pin",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "variant",
+        "label": "Wariant przygotowania",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "sqlite-prepared"
+        },
+        "query": "SELECT variant AS __value, variant || ' – ' || description AS __text FROM variants ORDER BY current DESC, variant",
+        "refresh": 1,
+        "current": {
+          "text": "v4",
+          "value": "v4"
+        }
+      },
+      {
+        "name": "hist_role",
+        "label": "Histogram: rola",
+        "type": "custom",
+        "query": "odsyp,zasyp,wszystkie",
+        "current": {
+          "text": "odsyp",
+          "value": "odsyp"
+        },
+        "options": [
+          {
+            "text": "odsyp",
+            "value": "odsyp",
+            "selected": true
+          },
+          {
+            "text": "zasyp",
+            "value": "zasyp",
+            "selected": false
+          },
+          {
+            "text": "wszystkie",
+            "value": "wszystkie",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "hist_scope",
+        "label": "Histogram: zakres",
+        "type": "custom",
+        "query": "cała baza,sesja,zakres czasu",
+        "current": {
+          "text": "cała baza",
+          "value": "cała baza"
+        },
+        "options": [
+          {
+            "text": "cała baza",
+            "value": "cała baza",
+            "selected": true
+          },
+          {
+            "text": "sesja",
+            "value": "sesja",
+            "selected": false
+          },
+          {
+            "text": "zakres czasu",
+            "value": "zakres czasu",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "gap_max",
+        "label": "Tabela przerw: do [s]",
+        "type": "textbox",
+        "query": "2",
+        "current": {
+          "text": "2",
+          "value": "2"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Sesje (klik w numer sesji: wybór sesji i jej zakresu czasu)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "SELECT s.id AS sesja, d.first_at AS od, d.last_at AS do,\n  printf('%.1f h', (d.last_at - d.first_at) / 3600.0) AS czas,\n  d.weight_count AS wskazania, d.pin_count AS \"zmiany pinów\", d.temperature_count AS temperatury,\n  CAST(d.first_at * 1000 AS INTEGER) AS from_ms, CAST(d.last_at * 1000 AS INTEGER) + 1 AS to_ms\nFROM sessions s\nJOIN (\n  SELECT session_id, MIN(timestamp) AS first_at, MAX(timestamp) AS last_at,\n         SUM(kind = 'w') AS weight_count, SUM(kind = 'p') AS pin_count, SUM(kind = 't') AS temperature_count\n  FROM (\n    SELECT session_id, timestamp, 'w' AS kind FROM measurements\n    UNION ALL SELECT session_id, timestamp, 'p' FROM pin_states\n    UNION ALL SELECT session_id, timestamp, 't' FROM temperature_measurements\n  )\n  GROUP BY session_id\n) d ON d.session_id = s.id\nORDER BY s.id",
+          "rawQueryText": "SELECT s.id AS sesja, d.first_at AS od, d.last_at AS do,\n  printf('%.1f h', (d.last_at - d.first_at) / 3600.0) AS czas,\n  d.weight_count AS wskazania, d.pin_count AS \"zmiany pinów\", d.temperature_count AS temperatury,\n  CAST(d.first_at * 1000 AS INTEGER) AS from_ms, CAST(d.last_at * 1000 AS INTEGER) + 1 AS to_ms\nFROM sessions s\nJOIN (\n  SELECT session_id, MIN(timestamp) AS first_at, MAX(timestamp) AS last_at,\n         SUM(kind = 'w') AS weight_count, SUM(kind = 'p') AS pin_count, SUM(kind = 't') AS temperature_count\n  FROM (\n    SELECT session_id, timestamp, 'w' AS kind FROM measurements\n    UNION ALL SELECT session_id, timestamp, 'p' FROM pin_states\n    UNION ALL SELECT session_id, timestamp, 't' FROM temperature_measurements\n  )\n  GROUP BY session_id\n) d ON d.session_id = s.id\nORDER BY s.id",
+          "queryType": "table",
+          "timeColumns": [
+            "od",
+            "do"
+          ]
+        }
+      ],
+      "transformations": [],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sesja"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Pokaż sesję",
+                    "url": "/d/dms-raw-overview/?${db:queryparam}&var-session=${__data.fields.sesja}&${only_changing:queryparam}&${variant:queryparam}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Wskazania [kg] (min i max w przedziale)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "interval": "1s",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, MIN(value) AS min, MAX(value) AS max\nFROM measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, MIN(value) AS min, MAX(value) AS max\nFROM measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1\nORDER BY 1",
+          "queryType": "time series",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max"
+            },
+            "properties": [
+              {
+                "id": "custom.fillBelowTo",
+                "value": "min"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Sygnały surowe (piny)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM pin_states\n  WHERE session_id = $session AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT value) > 1\n),\nbefore AS (\n  SELECT pin, value, MAX(timestamp) FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp < (${__from} / 1000.0)\n  GROUP BY pin\n),\ninside AS (\n  SELECT timestamp AS time, pin, value FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, value FROM (\n    SELECT pin, value, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, value FROM before UNION ALL SELECT time, pin, value FROM inside)\n    GROUP BY pin\n  )\n)\nSELECT time, 'pin ' || pin AS metric, value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, value FROM before\n  UNION ALL SELECT time, pin, value FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, value FROM last\n)\nORDER BY time",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM pin_states\n  WHERE session_id = $session AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT value) > 1\n),\nbefore AS (\n  SELECT pin, value, MAX(timestamp) FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp < (${__from} / 1000.0)\n  GROUP BY pin\n),\ninside AS (\n  SELECT timestamp AS time, pin, value FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, value FROM (\n    SELECT pin, value, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, value FROM before UNION ALL SELECT time, pin, value FROM inside)\n    GROUP BY pin\n  )\n)\nSELECT time, 'pin ' || pin AS metric, value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, value FROM before\n  UNION ALL SELECT time, pin, value FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, value FROM last\n)\nORDER BY time",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "max": 1.05,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "state-timeline",
+      "title": "Sygnały: surowe i po obróbce (zielone: zdarzenie, czerwone: odrzucone krótkie)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n),\ns AS (\n  SELECT pin, kind, timestamp, state FROM signal_changes\n  WHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND pin IN (SELECT pin FROM sel)\n),\nbefore AS (\n  SELECT pin, kind, state, MAX(timestamp) FROM s WHERE timestamp < (${__from} / 1000.0) GROUP BY pin, kind\n),\ninside AS (\n  SELECT timestamp AS time, pin, kind, state FROM s WHERE timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, kind, state FROM (\n    SELECT pin, kind, state, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before UNION ALL SELECT time, pin, kind, state FROM inside)\n    GROUP BY pin, kind\n  )\n)\nSELECT time, 'pin ' || pin || ' – ' || kind AS metric, state AS value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before\n  UNION ALL SELECT time, pin, kind, state FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, kind, state FROM last\n)\nORDER BY time, metric",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n),\ns AS (\n  SELECT pin, kind, timestamp, state FROM signal_changes\n  WHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND pin IN (SELECT pin FROM sel)\n),\nbefore AS (\n  SELECT pin, kind, state, MAX(timestamp) FROM s WHERE timestamp < (${__from} / 1000.0) GROUP BY pin, kind\n),\ninside AS (\n  SELECT timestamp AS time, pin, kind, state FROM s WHERE timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, kind, state FROM (\n    SELECT pin, kind, state, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before UNION ALL SELECT time, pin, kind, state FROM inside)\n    GROUP BY pin, kind\n  )\n)\nSELECT time, 'pin ' || pin || ' – ' || kind AS metric, state AS value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, kind, state FROM before\n  UNION ALL SELECT time, pin, kind, state FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, kind, state FROM last\n)\nORDER BY time, metric",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "transparent"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "",
+                  "color": "transparent",
+                  "index": 0
+                },
+                "1": {
+                  "text": "impuls",
+                  "color": "blue",
+                  "index": 1
+                },
+                "2": {
+                  "text": "zdarzenie",
+                  "color": "green",
+                  "index": 2
+                },
+                "3": {
+                  "text": "odrzucone",
+                  "color": "red",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 85,
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "rowHeight": 0.8,
+        "alignValue": "left",
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Odrzucone krótkie zdarzenia w sesji (klik w początek: przybliż ±30 s)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n)\nSELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND rejected = 1 AND pin IN (SELECT pin FROM sel)\nORDER BY start",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM signal_changes\n  WHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND kind = 'surowy' AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT state) > 1\n)\nSELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE variant = '${variant}' AND source = '${db}' AND session_id = $session AND rejected = 1 AND pin IN (SELECT pin FROM sel)\nORDER BY start",
+          "queryType": "table",
+          "timeColumns": [
+            "początek",
+            "koniec"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "początek"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Przybliż",
+                    "url": "/d/dms-raw-overview/?${db:queryparam}&${session:queryparam}&${pin:queryparam}&${only_changing:queryparam}&${variant:queryparam}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "początek|koniec"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Histogram czasu trwania zdarzeń (${hist_role}, ${hist_scope}; czerwone: odrzucone krótkie)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH buckets(ord, label, lo, hi) AS (\n  VALUES (1, '0–0,5 s', 0, 0.5), (2, '0,5–1 s', 0.5, 1), (3, '1–1,5 s', 1, 1.5), (4, '1,5–2 s', 1.5, 2),\n    (5, '2–3 s', 2, 3), (6, '3–5 s', 3, 5), (7, '5–10 s', 5, 10), (8, '10–20 s', 10, 20),\n    (9, '20–40 s', 20, 40), (10, '40–60 s', 40, 60), (11, '1–2 min', 60, 120), (12, '> 2 min', 120, 1e12)\n),\ne AS (\n  SELECT duration, rejected FROM signal_events\n  WHERE variant = '${variant}' AND source = '${db}'\n    AND ('${hist_role}' = 'wszystkie' OR role = '${hist_role}')\n    AND ('${hist_scope}' = 'cała baza'\n      OR ('${hist_scope}' = 'sesja' AND session_id = $session)\n      OR ('${hist_scope}' = 'zakres czasu' AND start >= (${__from} / 1000.0) AND start < (${__to} / 1000.0)))\n)\nSELECT b.label AS \"czas trwania\",\n  COALESCE(SUM(e.rejected = 0), 0) AS przyjęte,\n  COALESCE(SUM(e.rejected = 1), 0) AS odrzucone\nFROM buckets b LEFT JOIN e ON e.duration >= b.lo AND e.duration < b.hi\nGROUP BY b.ord, b.label\nORDER BY b.ord",
+          "rawQueryText": "WITH buckets(ord, label, lo, hi) AS (\n  VALUES (1, '0–0,5 s', 0, 0.5), (2, '0,5–1 s', 0.5, 1), (3, '1–1,5 s', 1, 1.5), (4, '1,5–2 s', 1.5, 2),\n    (5, '2–3 s', 2, 3), (6, '3–5 s', 3, 5), (7, '5–10 s', 5, 10), (8, '10–20 s', 10, 20),\n    (9, '20–40 s', 20, 40), (10, '40–60 s', 40, 60), (11, '1–2 min', 60, 120), (12, '> 2 min', 120, 1e12)\n),\ne AS (\n  SELECT duration, rejected FROM signal_events\n  WHERE variant = '${variant}' AND source = '${db}'\n    AND ('${hist_role}' = 'wszystkie' OR role = '${hist_role}')\n    AND ('${hist_scope}' = 'cała baza'\n      OR ('${hist_scope}' = 'sesja' AND session_id = $session)\n      OR ('${hist_scope}' = 'zakres czasu' AND start >= (${__from} / 1000.0) AND start < (${__to} / 1000.0)))\n)\nSELECT b.label AS \"czas trwania\",\n  COALESCE(SUM(e.rejected = 0), 0) AS przyjęte,\n  COALESCE(SUM(e.rejected = 1), 0) AS odrzucone\nFROM buckets b LEFT JOIN e ON e.duration >= b.lo AND e.duration < b.hi\nGROUP BY b.ord, b.label\nORDER BY b.ord",
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "przyjęte"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "odrzucone"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "czas trwania",
+        "stacking": "normal",
+        "showValue": "always",
+        "orientation": "vertical",
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": 0,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 9
+      }
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Histogram przerw między kolejnymi zdarzeniami na pinie (${hist_role}, ${hist_scope}; pomarańczowe: z odrzuconym)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH ordered AS (\n  SELECT source, session_id, pin, role, start, end, rejected,\n    LAG(end) OVER w AS prev_end, LAG(rejected) OVER w AS prev_rejected\n  FROM signal_events\n  WHERE variant = '${variant}' AND source = '${db}' AND ('${hist_role}' = 'wszystkie' OR role = '${hist_role}')\n  WINDOW w AS (PARTITION BY session_id, pin ORDER BY start)\n),\ng AS (\n  SELECT session_id, pin, role, prev_end, start, start - prev_end AS gap, MAX(rejected, prev_rejected) AS with_rejected\n  FROM ordered\n  WHERE prev_end IS NOT NULL\n    AND ('${hist_scope}' = 'cała baza'\n      OR ('${hist_scope}' = 'sesja' AND session_id = $session)\n      OR ('${hist_scope}' = 'zakres czasu' AND start >= (${__from} / 1000.0) AND start < (${__to} / 1000.0)))\n),\nbuckets(ord, label, lo, hi) AS (\n  VALUES (1, '< 1 s', 0, 1), (2, '1–1,25 s', 1, 1.25), (3, '1,25–1,5 s', 1.25, 1.5), (4, '1,5–2 s', 1.5, 2),\n    (5, '2–3 s', 2, 3), (6, '3–5 s', 3, 5), (7, '5–10 s', 5, 10), (8, '10–30 s', 10, 30),\n    (9, '30–60 s', 30, 60), (10, '1–5 min', 60, 300), (11, '5–30 min', 300, 1800), (12, '> 30 min', 1800, 1e12)\n)\nSELECT b.label AS przerwa,\n  COALESCE(SUM(g.with_rejected = 0), 0) AS \"między przyjętymi\",\n  COALESCE(SUM(g.with_rejected = 1), 0) AS \"z odrzuconym\"\nFROM buckets b LEFT JOIN g ON g.gap >= b.lo AND g.gap < b.hi\nGROUP BY b.ord, b.label\nORDER BY b.ord",
+          "rawQueryText": "WITH ordered AS (\n  SELECT source, session_id, pin, role, start, end, rejected,\n    LAG(end) OVER w AS prev_end, LAG(rejected) OVER w AS prev_rejected\n  FROM signal_events\n  WHERE variant = '${variant}' AND source = '${db}' AND ('${hist_role}' = 'wszystkie' OR role = '${hist_role}')\n  WINDOW w AS (PARTITION BY session_id, pin ORDER BY start)\n),\ng AS (\n  SELECT session_id, pin, role, prev_end, start, start - prev_end AS gap, MAX(rejected, prev_rejected) AS with_rejected\n  FROM ordered\n  WHERE prev_end IS NOT NULL\n    AND ('${hist_scope}' = 'cała baza'\n      OR ('${hist_scope}' = 'sesja' AND session_id = $session)\n      OR ('${hist_scope}' = 'zakres czasu' AND start >= (${__from} / 1000.0) AND start < (${__to} / 1000.0)))\n),\nbuckets(ord, label, lo, hi) AS (\n  VALUES (1, '< 1 s', 0, 1), (2, '1–1,25 s', 1, 1.25), (3, '1,25–1,5 s', 1.25, 1.5), (4, '1,5–2 s', 1.5, 2),\n    (5, '2–3 s', 2, 3), (6, '3–5 s', 3, 5), (7, '5–10 s', 5, 10), (8, '10–30 s', 10, 30),\n    (9, '30–60 s', 30, 60), (10, '1–5 min', 60, 300), (11, '5–30 min', 300, 1800), (12, '> 30 min', 1800, 1e12)\n)\nSELECT b.label AS przerwa,\n  COALESCE(SUM(g.with_rejected = 0), 0) AS \"między przyjętymi\",\n  COALESCE(SUM(g.with_rejected = 1), 0) AS \"z odrzuconym\"\nFROM buckets b LEFT JOIN g ON g.gap >= b.lo AND g.gap < b.hi\nGROUP BY b.ord, b.label\nORDER BY b.ord",
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "między przyjętymi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "z odrzuconym"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "przerwa",
+        "stacking": "normal",
+        "showValue": "always",
+        "orientation": "vertical",
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": 0,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 24,
+        "h": 9
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Przerwy krótsze niż ${gap_max} s (${hist_role}, ${hist_scope}; klik w początek: przybliż ±30 s)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sqlite-prepared"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sqlite-prepared"
+          },
+          "queryText": "WITH ordered AS (\n  SELECT source, session_id, pin, role, start, end, rejected,\n    LAG(end) OVER w AS prev_end, LAG(rejected) OVER w AS prev_rejected\n  FROM signal_events\n  WHERE variant = '${variant}' AND source = '${db}' AND ('${hist_role}' = 'wszystkie' OR role = '${hist_role}')\n  WINDOW w AS (PARTITION BY session_id, pin ORDER BY start)\n),\ng AS (\n  SELECT session_id, pin, role, prev_end, start, start - prev_end AS gap, MAX(rejected, prev_rejected) AS with_rejected\n  FROM ordered\n  WHERE prev_end IS NOT NULL\n    AND ('${hist_scope}' = 'cała baza'\n      OR ('${hist_scope}' = 'sesja' AND session_id = $session)\n      OR ('${hist_scope}' = 'zakres czasu' AND start >= (${__from} / 1000.0) AND start < (${__to} / 1000.0)))\n)\nSELECT session_id AS sesja, 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  prev_end AS \"koniec poprzedniego\", start AS \"początek następnego\", round(gap, 3) AS \"przerwa [s]\",\n  CASE WHEN with_rejected = 1 THEN 'tak' ELSE 'nie' END AS \"z odrzuconym\",\n  CAST((prev_end - 30) * 1000 AS INTEGER) AS from_ms, CAST((start + 30) * 1000 AS INTEGER) AS to_ms\nFROM g\nWHERE gap < ${gap_max}\nORDER BY gap",
+          "rawQueryText": "WITH ordered AS (\n  SELECT source, session_id, pin, role, start, end, rejected,\n    LAG(end) OVER w AS prev_end, LAG(rejected) OVER w AS prev_rejected\n  FROM signal_events\n  WHERE variant = '${variant}' AND source = '${db}' AND ('${hist_role}' = 'wszystkie' OR role = '${hist_role}')\n  WINDOW w AS (PARTITION BY session_id, pin ORDER BY start)\n),\ng AS (\n  SELECT session_id, pin, role, prev_end, start, start - prev_end AS gap, MAX(rejected, prev_rejected) AS with_rejected\n  FROM ordered\n  WHERE prev_end IS NOT NULL\n    AND ('${hist_scope}' = 'cała baza'\n      OR ('${hist_scope}' = 'sesja' AND session_id = $session)\n      OR ('${hist_scope}' = 'zakres czasu' AND start >= (${__from} / 1000.0) AND start < (${__to} / 1000.0)))\n)\nSELECT session_id AS sesja, 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  prev_end AS \"koniec poprzedniego\", start AS \"początek następnego\", round(gap, 3) AS \"przerwa [s]\",\n  CASE WHEN with_rejected = 1 THEN 'tak' ELSE 'nie' END AS \"z odrzuconym\",\n  CAST((prev_end - 30) * 1000 AS INTEGER) AS from_ms, CAST((start + 30) * 1000 AS INTEGER) AS to_ms\nFROM g\nWHERE gap < ${gap_max}\nORDER BY gap",
+          "queryType": "table",
+          "timeColumns": [
+            "koniec poprzedniego",
+            "początek następnego"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "początek następnego"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Przybliż",
+                    "url": "/d/dms-raw-overview/?${db:queryparam}&var-session=${__data.fields.sesja}&${hist_role:queryparam}&${hist_scope:queryparam}&${gap_max:queryparam}&${only_changing:queryparam}&${variant:queryparam}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "koniec poprzedniego|początek następnego"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 61,
+        "w": 24,
+        "h": 8
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Temperatury [°C]",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "interval": "1s",
+      "gridPos": {
+        "x": 0,
+        "y": 69,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperature_measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperature_measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "title": "Cała sesja",
+      "type": "link",
+      "icon": "dashboard",
+      "tooltip": "Ustaw zakres czasu na całą wybraną sesję",
+      "url": "/d/dms-raw-overview/?${db:queryparam}&${session:queryparam}&${pin:queryparam}&${only_changing:queryparam}&${variant:queryparam}&from=${session_from}&to=${session_to}",
+      "targetBlank": false,
+      "keepTime": false,
+      "includeVars": false
+    },
+    {
+      "title": "Przygotowane dane",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Ta sama baza, sesja i zakres czasu na dashboardzie przygotowanych danych",
+      "url": "/d/dms-prepared-overview/?var-source=${db}&${session:queryparam}&${variant:queryparam}",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false
+    }
+  ]
+}

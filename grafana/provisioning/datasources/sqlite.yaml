@@ -1,0 +1,26 @@
+apiVersion: 1
+deleteDatasources:
+  - name: przygotowane sygnały
+    orgId: 1
+datasources:
+  - name: 2026-08-30 testy
+    uid: sqlite-2026-08-30
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/dane-testowe-30-08-2026/measurement-data-saver.db
+  - name: 2026-10-18 obiekt
+    uid: sqlite-2026-10-18
+    type: frser-sqlite-datasource
+    isDefault: true
+    jsonData:
+      path: /data/meas-signs-temps_2026-10-18_no-temps-problem/measurement-data-saver.db
+  - name: 2026-10-18 testy manualne
+    uid: sqlite-2026-10-18-manual
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/meas-signs-temps_2026-10-18_no-temps-problem/testy_manualne_all.db
+  - name: przygotowane dane
+    uid: sqlite-prepared
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/prepared/prepared.db
