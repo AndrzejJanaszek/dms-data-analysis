@@ -23,8 +23,8 @@ def main() -> None:
     with sqlite3.connect(database) as connection:
         connection.execute("ATTACH DATABASE ? AS prepared", (f"file:{PREPARED_DB}?mode=ro",))
         for name, columns in TABLES.items():
-            condition = "" if name == "variants" else " WHERE source = ? AND session_id = ?"
-            parameters = () if name == "variants" else (ANALYSIS_SOURCE, ANALYSIS_SESSION)
+            condition = " WHERE source = ? AND session_id = ?" if columns else ""
+            parameters = (ANALYSIS_SOURCE, ANALYSIS_SESSION) if columns else ()
             connection.execute(f"CREATE TABLE {name} AS SELECT * FROM prepared.{name}{condition}", parameters)
             if columns:
                 connection.execute(f"CREATE INDEX {name}_session ON {name} ({columns})")
