@@ -7,8 +7,8 @@
   "graphTooltip": 1,
   "timezone": "browser",
   "time": {
-    "from": "2026-10-30T12:38:00.000Z",
-    "to": "2026-11-02T11:01:00.000Z"
+    "from": "2026-11-02T09:42:00.000Z",
+    "to": "2026-11-09T12:42:00.000Z"
   },
   "links": [
     {
@@ -40,8 +40,8 @@
         "type": "datasource",
         "query": "frser-sqlite-datasource",
         "current": {
-          "text": "2026-11-02 obiekt",
-          "value": "sqlite-2026-11-02"
+          "text": "2026-11-09 obiekt",
+          "value": "sqlite-2026-11-09"
         },
         "regex": "/^(?!przygotowane)/"
       },
@@ -56,8 +56,8 @@
         "query": "SELECT id AS __value, 'Sesja ' || id || ' (' || datetime(started_at, 'unixepoch', 'localtime') || ')' AS __text FROM sessions ORDER BY id DESC",
         "refresh": 1,
         "current": {
-          "text": "32",
-          "value": "32"
+          "text": "33",
+          "value": "33"
         }
       },
       {

@@ -31,7 +31,7 @@ TABLES = {
     "sensors": "",
 }
 
-FIRST_NEW_SESSION = {"sqlite-2026-11-02": 11}
+FIRST_NEW_SESSION = {"sqlite-2026-11-02": 11, "sqlite-2026-11-09": 33}
 
 RAW_KIND = "surowy"
 PREPARED_KIND = "zdarzenia"

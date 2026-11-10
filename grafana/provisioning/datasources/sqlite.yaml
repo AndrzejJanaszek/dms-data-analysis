@@ -24,6 +24,11 @@ datasources:
     type: frser-sqlite-datasource
     jsonData:
       path: /data/2026-11-2_temps/measurement-data-saver.db
+  - name: 2026-11-09 obiekt
+    uid: sqlite-2026-11-09
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/dane_all_2026-11-09/measurement-data-saver.db
   - name: przygotowane dane
     uid: sqlite-prepared
     type: frser-sqlite-datasource

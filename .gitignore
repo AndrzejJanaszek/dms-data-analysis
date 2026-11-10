@@ -6,3 +6,4 @@ __pycache__/
 *.db-wal
 grafana/storage/
 data/prepared/
+data/dane_all_2026-11-09/*.db
