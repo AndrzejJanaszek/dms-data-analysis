@@ -53,8 +53,13 @@ VARIANTS = {
         _rules(5, 1),
         {DISPENSE_PIN: _rules(8, 10, length_factor=1)},
     ),
+    "v5": Variant(
+        "odsyp: przerwa zależna od długości (k = 1, maks. 8 s), min. 7,5 s",
+        _rules(5, 1),
+        {DISPENSE_PIN: _rules(8, 7.5, length_factor=1)},
+    ),
 }
-CURRENT_VARIANT = "v4"
+CURRENT_VARIANT = "v5"
 
 
 @dataclass(frozen=True)
