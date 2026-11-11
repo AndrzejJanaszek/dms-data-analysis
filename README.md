@@ -46,6 +46,17 @@ New data:
 3. `extract`, `prepare`.
 4. Run `notebooks/data/period_check.ipynb` for the period (variable `PERIOD`, or `PERIOD=… uv run jupyter nbconvert --to notebook --execute …`) and look at it in Grafana (`Okresy`); then set `checked = true` and run `prepare` again.
 
+## Analysis stage 2: event values
+
+`uv run python -m dms_analysis.events compute [--period ID]` (after `prepare`) computes, for every checked period with a dispense signal, `data/results/<site>/<id>/event_values.db` (outside git):
+
+- `dispenses` and `dispense_values`: mass of every accepted dispense in 9 variants (nearest sample, median, mean of a 3 s window × gap after the signal end d = 0, 2, 3 s; mass = before − after), `excluded` = `okno` (the widest window touches another accepted event, a catalog issue, a part boundary or misses samples) or `kolizja` (overlaps a refill), `no_drop` per variant, gaps to the neighbouring events. Rejected dispenses are signal errors and are not neighbours.
+- `refills`: refill mass from single samples and from 3 s medians, dispenses during the refill.
+- `synthetic_trials`: semi-synthetic test — a ramp with mass and duration drawn from the pooled real dispenses of all periods, placed in event-free fragments (60 s clear of events, no issues or gaps), rounded to the meter division; a fixed number of trials per day and day part (day `DAY_START_H`–`DAY_END_H`), seeded per period and day; error = estimate − known mass.
+- `run`: commit, catalog hash and `prepared_at` of the prepared database, parameters.
+
+Results are reviewed in `notebooks/events/event_values.ipynb` (summary, single-dispense browser, mass and variant plots, refills, day/night boundaries, coverage, convergence, error grids and tables, worst trials). Code: `dms_analysis.events`, plot style `dms_analysis.style`. Decisions: workspace `praca-inzynierska/zakres.md` §7, plan `plans/dms-data-analysis/etap2-wartosci-zdarzen-plan.md`.
+
 ## Setup
 
 ```shell

@@ -7,6 +7,7 @@ RAW_DIR = DATA_DIR / "raw"
 RAW_PERIODS_DIR = DATA_DIR / "raw-periods"
 PREPARED_DIR = DATA_DIR / "prepared"
 ALL_PERIODS_DB = PREPARED_DIR / "periods.db"
+RESULTS_DIR = DATA_DIR / "results"
 REVIEW_DIR = DATA_DIR / "review"
 DISPENSE_MARKS = REVIEW_DIR / "dispense-marks.csv"
 
@@ -17,3 +18,7 @@ def raw_period_path(full_id: str) -> Path:
 
 def prepared_path(full_id: str) -> Path:
     return PREPARED_DIR / f"{full_id}.db"
+
+
+def results_path(full_id: str) -> Path:
+    return RESULTS_DIR / full_id / "event_values.db"
