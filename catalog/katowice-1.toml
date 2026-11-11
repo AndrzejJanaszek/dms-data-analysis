@@ -21,7 +21,7 @@ clock_offset_h = 0
 time_uncertainty_h = 0
 start = 2026-04-15T20:33:11+02:00
 end = 2026-04-19T18:25:59+02:00
-checked = false
+checked = true
 note = "czas zegara RPi (start bez sieci, zegar ok. 15.04 18:33 UTC); rzeczywisty czas nieznany, tylko po 21.06 i przed okresem 0002 (zakres.md §3)"
 
 [period.channels]
@@ -40,7 +40,7 @@ clock_offset_h = 1860.80
 time_uncertainty_h = 1
 start = 2026-07-02T09:21:22+02:00
 end = 2026-07-22T12:26:56+02:00
-checked = false
+checked = true
 note = "koniec = odłączenie RPi 22.07 ok. 12:27 czasu lokalnego (pamięć użytkownika, ±30 min, może ±1 h); przesunięcie = przesunięcie CSV-ek +1862,80 h minus 2 h (12:27 to czas lokalny, nie UTC)"
 
 [period.channels]

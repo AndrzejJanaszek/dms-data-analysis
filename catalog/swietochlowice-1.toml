@@ -26,7 +26,7 @@ clock_offset_h = 114.75
 time_uncertainty_h = 2.5
 start = 2026-09-25T11:45:26+02:00
 end = 2026-09-28T08:08:13+02:00
-checked = false
+checked = true
 note = "zegar nieustawiony (od 20.09 17:00 wg zegara); przesunięcie o 0,5 h mniejsze niż w okresie 0002, bo zegar sesji 9 startuje 23 min przed końcem sesji 8 (zakres.md §3); weekend. Piny zapisane, ale bez zmian: zasyp `broken` z 1 zasypem wpisanym ręcznie (użytkownik 2026-11-11, przegląd w Grafanie)"
 
 [period.channels]
@@ -50,7 +50,7 @@ clock_offset_h = 115.25
 time_uncertainty_h = 2
 start = 2026-09-28T08:15:22+02:00
 end = 2026-10-09T11:49:47+02:00
-checked = false
+checked = true
 note = "zegar nieustawiony; przesunięcie z dopasowania profilu doby (+19,25 h) i rytmu tygodnia (+4 doby), notebook tmp/inwentaryzacja/przesuniecie_s8_s9.ipynb. Kanały (Claude 2026-11-11, do sprawdzenia): odsyp migocze (mediana 65 impulsów na zdarzenie v5); zasyp: oba wzrosty wskazań > 10 t mają długie zdarzenie zasypu (30.09 13:20 +26,5 t, 07.10 10:23 +25,7 t), poza tym 3 krótkie zdarzenia 9–57 s bez wzrostu; czujniki temperatury bez odczytów (0 wierszy). Zasyp zmieniony na `broken` (2026-11-11): użytkownik w Grafanie zauważył, że zasyp 30.09 jest pocięty na krótki sygnał, długi i znowu krótki; zastąpiony ręcznym zasypem użytkownika; zasyp 07.10 przepisany przez Claude z sygnału (10:23:20–11:08:18) — do sprawdzenia przez użytkownika na wykresie"
 
 [period.channels]
@@ -121,7 +121,7 @@ clock_offset_h = 0
 time_uncertainty_h = 0
 start = 2026-10-21T09:15:18+02:00
 end = 2026-10-28T11:17:04+01:00
-checked = false
+checked = true
 note = "zegar ustawiony narzędziem set_time tuż przed startem; potem 7 dób bez korekty (dryf rzędu sekund–minut); czujniki temperatury bez zasilania (wypięty przewód, wykryte 2026-10-30). Kanały (Claude 2026-11-11, do sprawdzenia): odsyp czysty (mediana 1 impuls na zdarzenie, 7 ze 159 bez spadku wskazań; zakłócenia do ok. 7 s, np. 23.10 06:25–06:36); zasyp niezgodny ze wskazaniami: z 14 zdarzeń tylko 2 mają wzrost > 1 t (22.10 10:35 +16,4 t, 28.10 10:40 +3,2 t), 10 to impulsy 1–20 s, a wzrostów > 10 t w 45 min jest 5 (21.10 rano i po południu, 22.10 rano i po południu, 28.10 rano) — stan broken; 5 zasypów wpisanych ręcznie przez użytkownika (2026-11-11, przegląd w Grafanie; 21.10 dwa zasypy jeden po drugim, wg użytkownika osobne). Zakłócenia wskazań w [[period.issue]]"
 
 [period.channels]
@@ -143,6 +143,13 @@ kind = "disturbance"
 start = 2026-10-26T05:54:00+01:00
 end = 2026-10-26T15:37:30+01:00
 note = "chwilowe gwałtowne spadki wskazań o ok. 30 % masy (użytkownik 2026-11-11; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "dispense"
+kind = "false_event"
+start = 2026-10-21T15:27:44+02:00
+end = 2026-10-21T15:27:53+02:00
+note = "przyjęty odsyp 8,5 s, 2 impulsy, wskazanie +20 kg — zły według przeglądu odsypów (użytkownik 2026-11-11, data/review/dispense-marks.csv); nie idzie do analizy"
 
 [[period.manual_event]]
 channel = "refill"
@@ -179,7 +186,7 @@ clock_offset_h = 0
 time_uncertainty_h = 0
 start = 2026-10-30T13:38:14+01:00
 end = 2026-11-02T10:40:19+01:00
-checked = false
+checked = true
 note = "zegar zgodny z laptopem (check 30.10 12:49); styk z okresem 0005: 115 s przerwy (restart usługi przy zgrywaniu bazy). Kanały: odsyp czysty (użytkownik 2026-11-05: bez skakania; mediana 1 impuls na zdarzenie, 2 z 46 bez spadku wskazań); zasyp nie działa (impulsy 13:42–14:13 przed zasypem, sam zasyp w stanie nieaktywnym) — jedyny zasyp wpisany ręcznie"
 
 [period.channels]
@@ -203,7 +210,7 @@ clock_offset_h = 0
 time_uncertainty_h = 0
 start = 2026-11-02T10:42:14+01:00
 end = 2026-11-09T13:41:56+01:00
-checked = false
+checked = true
 note = "ten sam zegar co okres 0004; ostatni zasyp przerwany zatrzymaniem usługi przy zgrywaniu bazy. Kanały: odsyp czysty (Claude 2026-11-11, do sprawdzenia: mediana 1 impuls na zdarzenie, 33 z 384 bez spadku wskazań — część nachodzi na zasypy); zasyp nie działa (tylko krótkie impulsy 0,5–4 s przy części zasypów), 7 zasypów wpisanych ręcznie"
 
 [period.channels]
