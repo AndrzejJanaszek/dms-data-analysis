@@ -8,3 +8,4 @@ grafana/storage/
 data/prepared/
 data/raw/
 data/legacy/*.db
+data/results/
