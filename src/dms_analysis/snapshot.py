@@ -10,7 +10,7 @@ from dms_analysis.export import DATA_DIR, PREPARED_DB, PROJECT_DIR, TABLES
 
 ANALYSIS_SOURCE = "sqlite-2026-10-18"
 ANALYSIS_SESSION = 9
-SNAPSHOT_DIR = DATA_DIR / "snapshots"
+SNAPSHOT_DIR = DATA_DIR / "legacy" / "snapshots"
 SNAPSHOT_NAME = "prepared-obiekt-sesja-9"
 
 
