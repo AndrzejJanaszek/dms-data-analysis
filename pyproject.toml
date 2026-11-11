@@ -24,4 +24,8 @@ build-backend = "uv_build"
 dev = [
     "jupyterlab>=4.6.4",
     "nbconvert>=7.17.2",
+    "pytest>=9.2.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
