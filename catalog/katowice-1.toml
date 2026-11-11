@@ -1,0 +1,50 @@
+[site]
+id = "katowice-1"
+name = "Katowice"
+description = "pierwszy obiekt (wiosna–lato 2026); stary program measurement-data-saver bez sesji, zapisywał tylko wagę (sygnałów i czujników temperatury tam nie było)"
+
+[[hardware]]
+id = "h1"
+silo = "silos (do uzupełnienia)"
+meter = "do uzupełnienia"
+meter_division_kg = 20
+pins = {}
+temperature_sensors = []
+
+[[period]]
+id = "0001-unknown"
+legacy_name = "measurements.db, odcinek 3"
+hardware = "h1"
+source = { dump = "rpi4/2026-07-22", first_id = 87, last_id = 337531 }
+time = "unknown"
+clock_offset_h = 0
+time_uncertainty_h = 0
+start = 2026-04-15T20:33:11+02:00
+end = 2026-04-19T18:25:59+02:00
+checked = true
+note = "czas zegara RPi (start bez sieci, zegar ok. 15.04 18:33 UTC); rzeczywisty czas nieznany, tylko po 21.06 i przed okresem 0002 (zakres.md §3)"
+
+[period.channels]
+weight = "ok"
+dispense = "not_connected"
+refill = "not_connected"
+temperatures = "not_connected"
+
+[[period]]
+id = "0002-2026-07-02"
+legacy_name = "measurements.db, odcinek 4 (CSV-ki z lipca)"
+hardware = "h1"
+source = { dump = "rpi4/2026-07-22", first_id = 337532, last_id = 2074097 }
+time = "estimated"
+clock_offset_h = 1860.80
+time_uncertainty_h = 1
+start = 2026-07-02T09:21:22+02:00
+end = 2026-07-22T12:26:56+02:00
+checked = true
+note = "koniec = odłączenie RPi 22.07 ok. 12:27 czasu lokalnego (pamięć użytkownika, ±30 min, może ±1 h); przesunięcie = przesunięcie CSV-ek +1862,80 h minus 2 h (12:27 to czas lokalny, nie UTC)"
+
+[period.channels]
+weight = "ok"
+dispense = "not_connected"
+refill = "not_connected"
+temperatures = "not_connected"

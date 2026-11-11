@@ -1,6 +1,6 @@
 # Snapshot of the prepared dataset for analysis
 
-The analysis uses only the main site measurement: database `2026-10-18 obiekt` (`meas-signs-temps_2026-10-18_no-temps-problem/measurement-data-saver.db`), session 9. `prepared-obiekt-sesja-9.db.xz` holds that session cut out of `data/prepared/prepared.db`, kept in git as a backup and compressed with xz.
+The analysis uses only the main site measurement: database `2026-10-18 obiekt` (now `data/raw/rpi4/2026-10-18/measurement-data-saver.db`, catalogued as period `swietochlowice-1/0002-2026-09-28`), session 9. `prepared-obiekt-sesja-9.db.xz` holds that session cut out of `data/legacy/prepared.db` (until 2026-11-11 `data/prepared/prepared.db`), kept in git as a backup and compressed with xz.
 
 ## prepared-obiekt-sesja-9.db.xz
 
@@ -19,5 +19,5 @@ uv run python -m dms_analysis.snapshot
 Unpack (keeps the archive); the file can be opened in `notebooks/prepared_browser.ipynb` by passing its path to `PreparedBrowser`:
 
 ```shell
-xz -dkc data/snapshots/prepared-obiekt-sesja-9.db.xz > data/prepared/obiekt-sesja-9.db
+xz -dkc data/legacy/snapshots/prepared-obiekt-sesja-9.db.xz > data/legacy/obiekt-sesja-9.db
 ```

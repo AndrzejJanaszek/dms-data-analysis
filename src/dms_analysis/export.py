@@ -14,7 +14,8 @@ PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 GRAFANA_DATASOURCES = PROJECT_DIR / "grafana" / "provisioning" / "datasources" / "sqlite.yaml"
 GRAFANA_DATA_DIR = "/data"
-PREPARED_DB = DATA_DIR / "prepared" / "prepared.db"
+RAW_DIR = DATA_DIR / "raw"
+PREPARED_DB = DATA_DIR / "legacy" / "prepared.db"
 
 INACTIVE = 0
 RAW_ACTIVE = 1
@@ -109,7 +110,7 @@ def raw_databases() -> list[tuple[str, str, Path]]:
     for datasource in config["datasources"]:
         path = Path(datasource["jsonData"]["path"])
         local = DATA_DIR / path.relative_to(GRAFANA_DATA_DIR)
-        if local != PREPARED_DB:
+        if local.is_relative_to(RAW_DIR):
             sources.append((datasource["uid"], datasource["name"], local))
 
     return sources

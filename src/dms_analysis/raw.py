@@ -80,7 +80,7 @@ def _has_sessions(db_path: Path) -> bool:
 
 
 def _query(db_path: Path, sql: str, *params: object) -> pd.DataFrame:
-    with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as connection:
+    with sqlite3.connect(f"file:{db_path.resolve()}?mode=ro&immutable=1", uri=True) as connection:
         return pd.read_sql_query(sql, connection, params=params)
 
 

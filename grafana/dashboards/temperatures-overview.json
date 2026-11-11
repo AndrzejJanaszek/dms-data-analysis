@@ -43,7 +43,7 @@
           "text": "2026-11-09 obiekt",
           "value": "sqlite-2026-11-09"
         },
-        "regex": "/^(?!przygotowane)/"
+        "regex": "/^(?!przygotowane|okresy)/"
       },
       {
         "name": "session",

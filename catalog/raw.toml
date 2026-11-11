@@ -1,0 +1,69 @@
+[[dump]]
+id = "rpi4/2026-07-22"
+device = "rpi4"
+pulled = 2026-07-22
+file = "rpi4/2026-07-22/measurements.db"
+sha256 = "4d9b908c9708fbbf62c8fe79adbc1743a6378680c01fabc47604373930ce0859"
+program = "measurement-data-saver (stara wersja, bez sesji)"
+note = "Katowice; sama waga; data zgrania = odłączenie RPi 22.07 ok. 12:27 czasu lokalnego (inwentaryzacja 2026-11-11), commit z 28.07; dawniej data/measurements.db"
+contained_in = ""
+
+[[dump]]
+id = "rpi4/2026-08-30"
+device = "rpi4"
+pulled = 2026-08-30
+file = "rpi4/2026-08-30/measurement-data-saver.db"
+sha256 = "c2e65e37189c2fcfeca4f90d18d1db4362083078120096b42309e07a1bd30ecc"
+program = "measurement-data-saver"
+note = "osobna baza, testy przy biurku (sesje 1–35, numery pokrywają się z bazą obiektu); dawniej data/dane-testowe-30-08-2026/"
+contained_in = ""
+
+[[dump]]
+id = "rpi4/2026-10-18"
+device = "rpi4"
+pulled = 2026-10-18
+file = "rpi4/2026-10-18/measurement-data-saver.db"
+sha256 = "7597e5ddcc67e57237e97091575745ce3a8519daa80a4ec21496fa43a20c9403"
+program = "measurement-data-saver"
+note = "sesje 1–10; dawniej data/meas-signs-temps_2026-10-18_no-temps-problem/"
+contained_in = "rpi4/2026-11-09"
+
+[[dump]]
+id = "rpi4/2026-10-18-manual"
+device = "rpi4"
+pulled = 2026-10-18
+file = "rpi4/2026-10-18/testy_manualne_all.db"
+sha256 = "2291819b29224a7fcb309685498ed7747fc014351f018c1fecc79926a0cc5dd1"
+program = "measurement-data-saver"
+note = "sesje 1–17, po testach manualnych w domu; dawniej data/meas-signs-temps_2026-10-18_no-temps-problem/"
+contained_in = "rpi4/2026-11-09"
+
+[[dump]]
+id = "rpi4/2026-10-28"
+device = "rpi4"
+pulled = 2026-10-28
+file = "rpi4/2026-10-28/dms_2026-10-28.db"
+sha256 = "0121ab62a8a39034755ca29ce9059c5520026fc6c8fd43abb8bfbd0e936c57b9"
+program = "measurement-data-saver"
+note = "sesje 1–24; dawniej data/dms_2026-10-28.db"
+contained_in = "rpi4/2026-11-09"
+
+[[dump]]
+id = "rpi4/2026-11-02"
+device = "rpi4"
+pulled = 2026-11-02
+file = "rpi4/2026-11-02/measurement-data-saver.db"
+sha256 = "ceded1ed69ed50c4582f800860d4555c7987f32c5bce695d953459b326a3cc71"
+program = "measurement-data-saver"
+note = "sesje 1–32; dawniej data/2026-11-2_temps/"
+contained_in = "rpi4/2026-11-09"
+
+[[dump]]
+id = "rpi4/2026-11-09"
+device = "rpi4"
+pulled = 2026-11-09
+file = "rpi4/2026-11-09/measurement-data-saver.db"
+sha256 = "fda68914a97108d8ee96773ecc5726584af607de224211b1ec667f9853ba72e6"
+program = "measurement-data-saver"
+note = "pełna baza, sesje 1–33; dawniej data/dane_all_2026-11-09/ (w gicie jako zip, zgodny z tym plikiem)"
+contained_in = ""

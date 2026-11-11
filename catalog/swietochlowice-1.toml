@@ -1,0 +1,254 @@
+[site]
+id = "swietochlowice-1"
+name = "Świętochłowice"
+description = "drugi obiekt (od 2026-09-25); RPi 4 z measurement-data-saver i Arduino (sygnały odsypu i zasypu, od 2026-10-18 czujniki temperatury na nogach silosu)"
+
+[[hardware]]
+id = "h1"
+silo = "silos 1"
+meter = "Dini Argeo DGTP"
+meter_division_kg = 20
+pins = { 5 = "dispense", 4 = "refill" }
+temperature_sensors = [
+  { number = 1, address = "28A8F126AB240B1C", position = "południe, wschód" },
+  { number = 2, address = "28989298AA240B81", position = "zachód, południe" },
+  { number = 3, address = "287C36E9AB240BD4", position = "zachód" },
+  { number = 4, address = "2833D8EDAB240BF3", position = "wschód" },
+]
+
+[[period]]
+id = "0001-2026-09-25"
+legacy_name = "sesja 8"
+hardware = "h1"
+source = { dump = "rpi4/2026-11-09", session = 8 }
+time = "estimated"
+clock_offset_h = 114.75
+time_uncertainty_h = 2.5
+start = 2026-09-25T11:45:26+02:00
+end = 2026-09-28T08:08:13+02:00
+checked = true
+note = "zegar nieustawiony (od 20.09 17:00 wg zegara); przesunięcie o 0,5 h mniejsze niż w okresie 0002, bo zegar sesji 9 startuje 23 min przed końcem sesji 8 (zakres.md §3); weekend. Piny zapisane, ale bez zmian: zasyp `broken` z 1 zasypem wpisanym ręcznie (użytkownik 2026-11-11, przegląd w Grafanie)"
+
+[period.channels]
+weight = "ok"
+dispense = "not_connected"
+refill = "broken"
+temperatures = "not_connected"
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-09-25T15:40:14+02:00
+end = 2026-09-25T16:11:14+02:00
+
+[[period]]
+id = "0002-2026-09-28"
+legacy_name = "sesja 9"
+hardware = "h1"
+source = { dump = "rpi4/2026-11-09", session = 9 }
+time = "estimated"
+clock_offset_h = 115.25
+time_uncertainty_h = 2
+start = 2026-09-28T08:15:22+02:00
+end = 2026-10-09T11:49:47+02:00
+checked = true
+note = "zegar nieustawiony; przesunięcie z dopasowania profilu doby (+19,25 h) i rytmu tygodnia (+4 doby), notebook tmp/inwentaryzacja/przesuniecie_s8_s9.ipynb. Kanały (Claude 2026-11-11, do sprawdzenia): odsyp migocze (mediana 65 impulsów na zdarzenie v5); zasyp: oba wzrosty wskazań > 10 t mają długie zdarzenie zasypu (30.09 13:20 +26,5 t, 07.10 10:23 +25,7 t), poza tym 3 krótkie zdarzenia 9–57 s bez wzrostu; czujniki temperatury bez odczytów (0 wierszy). Zasyp zmieniony na `broken` (2026-11-11): użytkownik w Grafanie zauważył, że zasyp 30.09 jest pocięty na krótki sygnał, długi i znowu krótki; zastąpiony ręcznym zasypem użytkownika; zasyp 07.10 przepisany przez Claude z sygnału (10:23:20–11:08:18) — do sprawdzenia przez użytkownika na wykresie"
+
+[period.channels]
+weight = "ok"
+dispense = "flickering"
+refill = "broken"
+temperatures = "no_values"
+
+[[period.issue]]
+channel = "dispense"
+kind = "missing"
+start = 2026-09-28T08:15:22+02:00
+end = 2026-09-29T10:45:00+02:00
+note = "brak sygnału odsypu do 24.09 15:30 wg zegara (ok. 29.09 10:45 po korekcie)"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-09-29T09:19:00+02:00
+end = 2026-09-29T11:02:00+02:00
+note = "gwałtowne spadki wskazań (użytkownik 2026-11-11, przegląd w Grafanie; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-09-29T17:57:00+02:00
+end = 2026-09-29T18:37:00+02:00
+note = "gwałtowne spadki wskazań (użytkownik 2026-11-11, przegląd w Grafanie; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-04T17:34:00+02:00
+end = 2026-10-04T18:24:00+02:00
+note = "gwałtowne spadki wskazań (użytkownik 2026-11-11, przegląd w Grafanie; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-05T05:48:00+02:00
+end = 2026-10-05T06:11:08+02:00
+note = "gwałtowne spadki wskazań (użytkownik 2026-11-11, przegląd w Grafanie; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-08T10:09:30+02:00
+end = 2026-10-08T10:36:00+02:00
+note = "gwałtowne spadki wskazań (użytkownik 2026-11-11, przegląd w Grafanie; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-09-30T13:20:52+02:00
+end = 2026-09-30T13:50:12+02:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-07T10:23:20+02:00
+end = 2026-10-07T11:08:18+02:00
+
+[[period]]
+id = "0003-2026-10-21"
+legacy_name = "sesja 23"
+hardware = "h1"
+source = { dump = "rpi4/2026-11-09", session = 23 }
+time = "real"
+clock_offset_h = 0
+time_uncertainty_h = 0
+start = 2026-10-21T09:15:18+02:00
+end = 2026-10-28T11:17:04+01:00
+checked = true
+note = "zegar ustawiony narzędziem set_time tuż przed startem; potem 7 dób bez korekty (dryf rzędu sekund–minut); czujniki temperatury bez zasilania (wypięty przewód, wykryte 2026-10-30). Kanały (Claude 2026-11-11, do sprawdzenia): odsyp czysty (mediana 1 impuls na zdarzenie, 7 ze 159 bez spadku wskazań; zakłócenia do ok. 7 s, np. 23.10 06:25–06:36); zasyp niezgodny ze wskazaniami: z 14 zdarzeń tylko 2 mają wzrost > 1 t (22.10 10:35 +16,4 t, 28.10 10:40 +3,2 t), 10 to impulsy 1–20 s, a wzrostów > 10 t w 45 min jest 5 (21.10 rano i po południu, 22.10 rano i po południu, 28.10 rano) — stan broken; 5 zasypów wpisanych ręcznie przez użytkownika (2026-11-11, przegląd w Grafanie; 21.10 dwa zasypy jeden po drugim, wg użytkownika osobne). Zakłócenia wskazań w [[period.issue]]"
+
+[period.channels]
+weight = "ok"
+dispense = "ok"
+refill = "broken"
+temperatures = "not_connected"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-21T09:15:18+02:00
+end = 2026-10-21T09:42:37+02:00
+note = "gwałtowne spadki wskazań od początku okresu (użytkownik 2026-11-11; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-26T05:54:00+01:00
+end = 2026-10-26T15:37:30+01:00
+note = "chwilowe gwałtowne spadki wskazań o ok. 30 % masy (użytkownik 2026-11-11; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "dispense"
+kind = "false_event"
+start = 2026-10-21T15:27:44+02:00
+end = 2026-10-21T15:27:53+02:00
+note = "przyjęty odsyp 8,5 s, 2 impulsy, wskazanie +20 kg — zły według przeglądu odsypów (użytkownik 2026-11-11, data/review/dispense-marks.csv); nie idzie do analizy"
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-21T13:45:06+02:00
+end = 2026-10-21T14:01:22+02:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-21T14:02:10+02:00
+end = 2026-10-21T14:21:22+02:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-22T10:26:32+02:00
+end = 2026-10-22T10:50:36+02:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-22T13:32:58+02:00
+end = 2026-10-22T14:04:06+02:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-28T10:31:46+01:00
+end = 2026-10-28T10:58:46+01:00
+
+[[period]]
+id = "0004-2026-10-30"
+legacy_name = "sesja 32"
+hardware = "h1"
+source = { dump = "rpi4/2026-11-09", session = 32 }
+time = "real"
+clock_offset_h = 0
+time_uncertainty_h = 0
+start = 2026-10-30T13:38:14+01:00
+end = 2026-11-02T10:40:19+01:00
+checked = true
+note = "zegar zgodny z laptopem (check 30.10 12:49); styk z okresem 0005: 115 s przerwy (restart usługi przy zgrywaniu bazy). Kanały: odsyp czysty (użytkownik 2026-11-05: bez skakania; mediana 1 impuls na zdarzenie, 2 z 46 bez spadku wskazań); zasyp nie działa (impulsy 13:42–14:13 przed zasypem, sam zasyp w stanie nieaktywnym) — jedyny zasyp wpisany ręcznie"
+
+[period.channels]
+weight = "ok"
+dispense = "ok"
+refill = "broken"
+temperatures = "ok"
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-10-30T14:14:10+01:00
+end = 2026-10-30T14:36:49+01:00
+
+[[period]]
+id = "0005-2026-11-02"
+legacy_name = "sesja 33"
+hardware = "h1"
+source = { dump = "rpi4/2026-11-09", session = 33 }
+time = "real"
+clock_offset_h = 0
+time_uncertainty_h = 0
+start = 2026-11-02T10:42:14+01:00
+end = 2026-11-09T13:41:56+01:00
+checked = true
+note = "ten sam zegar co okres 0004; ostatni zasyp przerwany zatrzymaniem usługi przy zgrywaniu bazy. Kanały: odsyp czysty (Claude 2026-11-11, do sprawdzenia: mediana 1 impuls na zdarzenie, 33 z 384 bez spadku wskazań — część nachodzi na zasypy); zasyp nie działa (tylko krótkie impulsy 0,5–4 s przy części zasypów), 7 zasypów wpisanych ręcznie"
+
+[period.channels]
+weight = "ok"
+dispense = "ok"
+refill = "broken"
+temperatures = "ok"
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-02T16:29:01+01:00
+end = 2026-11-02T17:00:59+01:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-03T12:16:22+01:00
+end = 2026-11-03T12:44:13+01:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-05T11:02:14+01:00
+end = 2026-11-05T11:36:24+01:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-05T12:10:08+01:00
+end = 2026-11-05T12:38:44+01:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-06T10:11:50+01:00
+end = 2026-11-06T10:55:46+01:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-06T14:18:42+01:00
+end = 2026-11-06T14:44:16+01:00
+
+[[period.manual_event]]
+channel = "refill"
+start = 2026-11-09T13:34:16+01:00
