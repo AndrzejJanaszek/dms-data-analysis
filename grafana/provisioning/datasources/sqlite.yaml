@@ -7,30 +7,40 @@ datasources:
     uid: sqlite-2026-08-30
     type: frser-sqlite-datasource
     jsonData:
-      path: /data/dane-testowe-30-08-2026/measurement-data-saver.db
+      path: /data/raw/rpi4/2026-08-30/measurement-data-saver.db
+      pathOptions: mode=ro&immutable=1
   - name: 2026-10-18 obiekt
     uid: sqlite-2026-10-18
     type: frser-sqlite-datasource
     isDefault: true
     jsonData:
-      path: /data/meas-signs-temps_2026-10-18_no-temps-problem/measurement-data-saver.db
+      path: /data/raw/rpi4/2026-10-18/measurement-data-saver.db
+      pathOptions: mode=ro&immutable=1
   - name: 2026-10-18 testy manualne
     uid: sqlite-2026-10-18-manual
     type: frser-sqlite-datasource
     jsonData:
-      path: /data/meas-signs-temps_2026-10-18_no-temps-problem/testy_manualne_all.db
+      path: /data/raw/rpi4/2026-10-18/testy_manualne_all.db
+      pathOptions: mode=ro&immutable=1
   - name: 2026-11-02 obiekt
     uid: sqlite-2026-11-02
     type: frser-sqlite-datasource
     jsonData:
-      path: /data/2026-11-2_temps/measurement-data-saver.db
+      path: /data/raw/rpi4/2026-11-02/measurement-data-saver.db
+      pathOptions: mode=ro&immutable=1
   - name: 2026-11-09 obiekt
     uid: sqlite-2026-11-09
     type: frser-sqlite-datasource
     jsonData:
-      path: /data/dane_all_2026-11-09/measurement-data-saver.db
+      path: /data/raw/rpi4/2026-11-09/measurement-data-saver.db
+      pathOptions: mode=ro&immutable=1
   - name: przygotowane dane
     uid: sqlite-prepared
     type: frser-sqlite-datasource
     jsonData:
-      path: /data/prepared/prepared.db
+      path: /data/legacy/prepared.db
+  - name: okresy
+    uid: sqlite-periods
+    type: frser-sqlite-datasource
+    jsonData:
+      path: /data/prepared/periods.db
