@@ -7,6 +7,8 @@ RAW_DIR = DATA_DIR / "raw"
 RAW_PERIODS_DIR = DATA_DIR / "raw-periods"
 PREPARED_DIR = DATA_DIR / "prepared"
 ALL_PERIODS_DB = PREPARED_DIR / "periods.db"
+REVIEW_DIR = DATA_DIR / "review"
+DISPENSE_MARKS = REVIEW_DIR / "dispense-marks.csv"
 
 
 def raw_period_path(full_id: str) -> Path:

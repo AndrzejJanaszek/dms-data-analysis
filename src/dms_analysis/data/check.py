@@ -24,6 +24,7 @@ WEIGHT_COLOR = "#264653"
 EVENT_COLOR = "rgba(42, 157, 143, 0.18)"
 MANUAL_COLOR = "rgba(233, 196, 106, 0.35)"
 ISSUE_COLOR = "rgba(231, 111, 81, 0.18)"
+CURRENT_EVENT_COLOR = "#e76f51"
 FULL_DAY = "pełna"
 FULL_DAY_WITH_ISSUE = "pełna z problemem"
 PARTIAL_DAY = "niepełna"
@@ -320,7 +321,10 @@ def _plot_moment(moment: pd.Timestamp) -> pd.Timestamp:
 
 
 def weight_changes(period: PreparedPeriod) -> pd.DataFrame:
-    events = period.events[period.events["rejected"] == 0]
+    return events_weight_changes(period, period.events[period.events["rejected"] == 0])
+
+
+def events_weight_changes(period: PreparedPeriod, events: pd.DataFrame) -> pd.DataFrame:
     seconds = epoch_seconds(period.weight["timestamp"]).to_numpy()
     values = period.weight["value"].to_numpy()
 
@@ -354,7 +358,13 @@ def suspicious_events(period: PreparedPeriod) -> pd.DataFrame:
     )
 
 
-def event_figure(period: PreparedPeriod, start: pd.Timestamp, end: pd.Timestamp, title: str) -> go.Figure:
+def event_figure(
+    period: PreparedPeriod,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    title: str,
+    highlight: tuple[pd.Timestamp, pd.Timestamp] | None = None,
+) -> go.Figure:
     weight = period.weight[(period.weight["timestamp"] >= start) & (period.weight["timestamp"] <= end)]
     changes = _window_changes(period.changes, start, end)
 
@@ -382,6 +392,15 @@ def event_figure(period: PreparedPeriod, start: pd.Timestamp, end: pd.Timestamp,
             x1=_plot_moment(min(event.end, end)),
             fillcolor=color,
             line_width=0,
+            row="all",
+            col=1,
+        )
+    if highlight is not None:
+        figure.add_vrect(
+            x0=_plot_moment(highlight[0]),
+            x1=_plot_moment(highlight[1]),
+            line={"color": CURRENT_EVENT_COLOR, "width": 2},
+            fillcolor="rgba(0, 0, 0, 0)",
             row="all",
             col=1,
         )
