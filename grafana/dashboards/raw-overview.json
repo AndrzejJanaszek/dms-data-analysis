@@ -114,8 +114,8 @@
         "query": "SELECT variant AS __value, variant || ' – ' || description AS __text FROM variants ORDER BY current DESC, variant",
         "refresh": 1,
         "current": {
-          "text": "v4",
-          "value": "v4"
+          "text": "v5",
+          "value": "v5"
         }
       },
       {

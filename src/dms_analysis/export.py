@@ -5,8 +5,10 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from dms_analysis.manual_events import manual_events, prepared_events
 from dms_analysis.raw import load_session, load_sessions
-from dms_analysis.signals import ACTIVE_LEVEL, CURRENT_VARIANT, PIN_ROLES, VARIANTS, SignalEvents, detect_events
+from dms_analysis.sensors import sensors_rows, valid_readings, with_sensor_numbers
+from dms_analysis.signals import ACTIVE_LEVEL, CURRENT_VARIANT, PIN_ROLES, VARIANTS, SignalEvents
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
@@ -26,7 +28,10 @@ TABLES = {
     "signal_changes": "variant, source, session_id, pin, timestamp",
     "signal_events": "variant, source, session_id",
     "variants": "",
+    "sensors": "",
 }
+
+FIRST_NEW_SESSION = {"sqlite-2026-11-02": 11, "sqlite-2026-11-09": 33}
 
 RAW_KIND = "surowy"
 PREPARED_KIND = "zdarzenia"
@@ -37,23 +42,27 @@ def main() -> None:
 
     for source, name, db_path in raw_databases():
         sessions = load_sessions(db_path)
+        sessions = sessions[sessions["session_id"] >= FIRST_NEW_SESSION.get(source, 0)]
         tables["sessions"].append(sessions_rows(sessions).assign(source=source, source_name=name))
 
         for session_id in sessions["session_id"]:
             data = load_session(db_path, int(session_id))
             keys = {"source": source, "session_id": int(session_id)}
             tables["weight"].append(data.weight.pipe(_epoch_seconds, "timestamp").assign(**keys))
-            tables["temperatures"].append(data.temperatures.pipe(_epoch_seconds, "timestamp").assign(**keys))
+            temperatures = data.temperatures.pipe(valid_readings).pipe(with_sensor_numbers)
+            tables["temperatures"].append(temperatures.pipe(_epoch_seconds, "timestamp").assign(**keys))
             if data.pins.empty:
                 continue
+            manual = manual_events(source, int(session_id))
             for variant_name, variant in VARIANTS.items():
-                signal_events = detect_events(data.pins, data.end, variant=variant)
+                signal_events = prepared_events(data.pins, data.end, variant, manual)
                 variant_keys = {"variant": variant_name, **keys}
                 tables["signal_changes"].append(signal_changes(data.pins, signal_events).assign(**variant_keys))
                 tables["signal_events"].append(events_rows(signal_events).assign(**variant_keys))
         print(f"{source}: {db_path.relative_to(DATA_DIR)}")
 
     tables["variants"].append(variants_rows())
+    tables["sensors"].append(sensors_rows())
     write({name: pd.concat(frames, ignore_index=True) for name, frames in tables.items()})
     print(f"zapisano {PREPARED_DB.relative_to(PROJECT_DIR)}, warianty: {', '.join(VARIANTS)}")
 
@@ -153,6 +162,7 @@ def events_rows(signal_events: SignalEvents) -> pd.DataFrame:
             "pulse_count": rows["pulse_count"],
             "active_share": rows["active_share"],
             "rejected": rows["rejected"],
+            "synthetic": rows["synthetic"].astype(int),
         }
     )
     return table.pipe(_epoch_seconds, "start").pipe(_epoch_seconds, "end")

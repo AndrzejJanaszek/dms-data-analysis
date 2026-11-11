@@ -34,14 +34,15 @@ The memory limit makes the kernel OOM kill Jupyter instead of freezing the whole
 cd grafana && docker compose up -d
 ```
 
-Open http://localhost:3000 (no login). Two dashboards, linked to each other with the same database, session and time range:
+Open http://localhost:3000 (no login). Dashboards linked to each other with the same database, session and time range:
 
 - `Przegląd surowych danych` (home) reads the databases in `data/` directly through the `frser-sqlite-datasource` plugin, with the prepared signals, the rejected events and the histograms of event durations and gaps next to the raw data;
-- `Przygotowane dane` reads only the prepared database: sessions, weight readings, signal events of the selected variant (accepted and rejected), a table of events in the visible range and temperatures.
+- `Przygotowane dane` reads only the prepared database: sessions, weight readings, signal events of the selected variant (accepted and rejected), a table of events in the visible range and temperatures;
+- `Wskazania, temperatury i sygnały` reads a raw database directly: weight readings, then temperatures (one line per sensor, DS18B20 error codes 85 and −127 and malformed sensor addresses left out), then raw pins, on one time axis.
 
  Each database is a data source in `grafana/provisioning/datasources/sqlite.yaml`; a new dataset needs a new entry there and `docker compose restart`. The dashboards live in `grafana/dashboards/` and are reloaded from the files, so lasting changes go into those files. Stop with `docker compose down`.
 
-The prepared data is `data/prepared/prepared.db` (not in git), produced by the pipeline for every database listed in `sqlite.yaml`: tables `sessions`, `weight` and `temperatures` (copied unchanged for now, with a `source` column naming the raw database), `signal_changes` and `signal_events` for every rule variant (column `variant`), and `variants` with the rules, the git commit and the export time. The dashboard variable `Wariant` selects the variant. Regenerate the file after changing the pipeline or adding data, then refresh the dashboard:
+The prepared data is `data/prepared/prepared.db` (not in git), produced by the pipeline for every database listed in `sqlite.yaml`: tables `sessions`, `weight` and `temperatures` (with a `source` column naming the raw database; temperatures without the DS18B20 error codes 85 and −127 and malformed addresses, with the sensor number from `src/dms_analysis/sensors.py`), `signal_changes` and `signal_events` for every rule variant (column `variant`), `variants` with the rules, the git commit and the export time, and `sensors` (address, number, sides of the silo). `FIRST_NEW_SESSION` in `export.py` skips sessions of a newer database that are already exported from an older one. A pin whose signal is broken in a session can be replaced by events entered by hand (`MANUAL_EVENTS` in `src/dms_analysis/manual_events.py`, times in UTC); they apply to every variant and are marked with `synthetic = 1`, so they show where the event was, not when the real signal switched. The dashboard variable `Wariant` selects the variant. Regenerate the file after changing the pipeline or adding data, then refresh the dashboard:
 
 ```shell
 uv run python -m dms_analysis.export

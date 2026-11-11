@@ -77,8 +77,8 @@
         "query": "SELECT variant AS __value, variant || ' – ' || description AS __text FROM variants ORDER BY current DESC, variant",
         "refresh": 1,
         "current": {
-          "text": "v4",
-          "value": "v4"
+          "text": "v5",
+          "value": "v5"
         }
       },
       {
@@ -419,8 +419,8 @@
             "type": "frser-sqlite-datasource",
             "uid": "sqlite-prepared"
           },
-          "queryText": "SELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  round(active_share, 2) AS \"udział aktywnego\", CASE WHEN rejected = 1 THEN 'odrzucone' ELSE 'przyjęte' END AS status,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE variant = '${variant}' AND source = '${source}' AND session_id = $session AND pin IN (${pin:csv})\n  AND start < (${__to} / 1000.0) AND end >= (${__from} / 1000.0)\nORDER BY start",
-          "rawQueryText": "SELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  round(active_share, 2) AS \"udział aktywnego\", CASE WHEN rejected = 1 THEN 'odrzucone' ELSE 'przyjęte' END AS status,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE variant = '${variant}' AND source = '${source}' AND session_id = $session AND pin IN (${pin:csv})\n  AND start < (${__to} / 1000.0) AND end >= (${__from} / 1000.0)\nORDER BY start",
+          "queryText": "SELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  round(active_share, 2) AS \"udział aktywnego\", CASE WHEN rejected = 1 THEN 'odrzucone' ELSE 'przyjęte' END AS status, CASE WHEN synthetic = 1 THEN 'tak' ELSE '' END AS syntetyczne,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE variant = '${variant}' AND source = '${source}' AND session_id = $session AND pin IN (${pin:csv})\n  AND start < (${__to} / 1000.0) AND end >= (${__from} / 1000.0)\nORDER BY start",
+          "rawQueryText": "SELECT 'pin ' || pin || CASE WHEN role != '' THEN ' (' || role || ')' ELSE '' END AS sygnał,\n  start AS początek, end AS koniec, round(duration, 2) AS \"czas [s]\", pulse_count AS impulsy,\n  round(active_share, 2) AS \"udział aktywnego\", CASE WHEN rejected = 1 THEN 'odrzucone' ELSE 'przyjęte' END AS status, CASE WHEN synthetic = 1 THEN 'tak' ELSE '' END AS syntetyczne,\n  CAST((start - 30) * 1000 AS INTEGER) AS from_ms, CAST((end + 30) * 1000 AS INTEGER) AS to_ms\nFROM signal_events\nWHERE variant = '${variant}' AND source = '${source}' AND session_id = $session AND pin IN (${pin:csv})\n  AND start < (${__to} / 1000.0) AND end >= (${__from} / 1000.0)\nORDER BY start",
           "queryType": "table",
           "timeColumns": [
             "początek",
@@ -545,8 +545,8 @@
             "type": "frser-sqlite-datasource",
             "uid": "sqlite-prepared"
           },
-          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperatures, b\nWHERE source = '${source}' AND session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
-          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperatures, b\nWHERE source = '${source}' AND session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, COALESCE('czujnik ' || sensor || ' (' || (SELECT sides FROM sensors WHERE sensors.sensor = temperatures.sensor) || ')', '…' || substr(sensor_address, -4)) AS metric, AVG(value) AS value\nFROM temperatures, b\nWHERE source = '${source}' AND session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, COALESCE('czujnik ' || sensor || ' (' || (SELECT sides FROM sensors WHERE sensors.sensor = temperatures.sensor) || ')', '…' || substr(sensor_address, -4)) AS metric, AVG(value) AS value\nFROM temperatures, b\nWHERE source = '${source}' AND session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1, 2\nORDER BY 1",
           "queryType": "table",
           "timeColumns": [
             "time"

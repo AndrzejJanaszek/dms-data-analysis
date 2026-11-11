@@ -1,0 +1,365 @@
+{
+  "uid": "dms-temperatures",
+  "title": "Wskazania, temperatury i sygnały",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "time": {
+    "from": "2026-11-02T09:42:00.000Z",
+    "to": "2026-11-09T12:42:00.000Z"
+  },
+  "links": [
+    {
+      "title": "Cała sesja",
+      "type": "link",
+      "icon": "dashboard",
+      "tooltip": "Ustaw zakres czasu na całą wybraną sesję",
+      "url": "/d/dms-temperatures/?${db:queryparam}&${session:queryparam}&${pin:queryparam}&${only_changing:queryparam}&from=${session_from}&to=${session_to}",
+      "targetBlank": false,
+      "keepTime": false,
+      "includeVars": false
+    },
+    {
+      "title": "Przegląd surowych danych",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Ta sama baza, sesja i zakres czasu",
+      "url": "/d/dms-raw-overview/?${db:queryparam}&${session:queryparam}",
+      "targetBlank": false,
+      "keepTime": true,
+      "includeVars": false
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "db",
+        "label": "Baza",
+        "type": "datasource",
+        "query": "frser-sqlite-datasource",
+        "current": {
+          "text": "2026-11-09 obiekt",
+          "value": "sqlite-2026-11-09"
+        },
+        "regex": "/^(?!przygotowane)/"
+      },
+      {
+        "name": "session",
+        "label": "Sesja",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT id AS __value, 'Sesja ' || id || ' (' || datetime(started_at, 'unixepoch', 'localtime') || ')' AS __text FROM sessions ORDER BY id DESC",
+        "refresh": 1,
+        "current": {
+          "text": "33",
+          "value": "33"
+        }
+      },
+      {
+        "name": "session_from",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT CAST(MIN(t) * 1000 AS INTEGER) FROM (\n  SELECT MIN(timestamp) AS t FROM measurements WHERE session_id = $session\n  UNION ALL SELECT MIN(timestamp) FROM pin_states WHERE session_id = $session\n  UNION ALL SELECT MIN(timestamp) FROM temperature_measurements WHERE session_id = $session\n)",
+        "refresh": 1
+      },
+      {
+        "name": "session_to",
+        "type": "query",
+        "hide": 2,
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT CAST(MAX(t) * 1000 AS INTEGER) + 1 FROM (\n  SELECT MAX(timestamp) AS t FROM measurements WHERE session_id = $session\n  UNION ALL SELECT MAX(timestamp) FROM pin_states WHERE session_id = $session\n  UNION ALL SELECT MAX(timestamp) FROM temperature_measurements WHERE session_id = $session\n)",
+        "refresh": 1
+      },
+      {
+        "name": "only_changing",
+        "label": "Tylko zmieniające się piny",
+        "type": "custom",
+        "query": "tak,nie",
+        "current": {
+          "text": "tak",
+          "value": "tak"
+        },
+        "options": [
+          {
+            "text": "tak",
+            "value": "tak",
+            "selected": true
+          },
+          {
+            "text": "nie",
+            "value": "nie",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "pin",
+        "label": "Piny",
+        "type": "query",
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "${db}"
+        },
+        "query": "SELECT DISTINCT pin FROM pin_states WHERE session_id = $session ORDER BY pin",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Wskazania [kg] (min i max w przedziale)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "interval": "1s",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, MIN(value) AS min, MAX(value) AS max\nFROM measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, MIN(value) AS min, MAX(value) AS max\nFROM measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\nGROUP BY 1\nORDER BY 1",
+          "queryType": "time series",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max"
+            },
+            "properties": [
+              {
+                "id": "custom.fillBelowTo",
+                "value": "min"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 30
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Temperatury [°C] (średnia w przedziale, bez kodów błędów 85 i −127)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "interval": "1s",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperature_measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n  AND length(sensor_address) = 16 AND value NOT IN (85.0, -127.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "rawQueryText": "WITH b AS (SELECT MAX(1.0, $__interval_ms / 1000.0) AS s)\nSELECT CAST(timestamp / b.s AS INTEGER) * b.s AS time, '…' || substr(sensor_address, -4) AS metric, AVG(value) AS value\nFROM temperature_measurements, b\nWHERE session_id = $session AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n  AND length(sensor_address) = 16 AND value NOT IN (85.0, -127.0)\nGROUP BY 1, 2\nORDER BY 1",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Sygnały surowe (piny)",
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "${db}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "${db}"
+          },
+          "queryText": "WITH sel AS (\n  SELECT pin FROM pin_states\n  WHERE session_id = $session AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT value) > 1\n),\nbefore AS (\n  SELECT pin, value, MAX(timestamp) FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp < (${__from} / 1000.0)\n  GROUP BY pin\n),\ninside AS (\n  SELECT timestamp AS time, pin, value FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, value FROM (\n    SELECT pin, value, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, value FROM before UNION ALL SELECT time, pin, value FROM inside)\n    GROUP BY pin\n  )\n)\nSELECT time, 'pin ' || pin AS metric, value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, value FROM before\n  UNION ALL SELECT time, pin, value FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, value FROM last\n)\nORDER BY time",
+          "rawQueryText": "WITH sel AS (\n  SELECT pin FROM pin_states\n  WHERE session_id = $session AND pin IN (${pin:csv})\n  GROUP BY pin\n  HAVING '$only_changing' = 'nie' OR COUNT(DISTINCT value) > 1\n),\nbefore AS (\n  SELECT pin, value, MAX(timestamp) FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp < (${__from} / 1000.0)\n  GROUP BY pin\n),\ninside AS (\n  SELECT timestamp AS time, pin, value FROM pin_states\n  WHERE session_id = $session AND pin IN (SELECT pin FROM sel) AND timestamp >= (${__from} / 1000.0) AND timestamp < (${__to} / 1000.0)\n),\nlast AS (\n  SELECT pin, value FROM (\n    SELECT pin, value, MAX(time) FROM (SELECT (${__from} / 1000.0) AS time, pin, value FROM before UNION ALL SELECT time, pin, value FROM inside)\n    GROUP BY pin\n  )\n)\nSELECT time, 'pin ' || pin AS metric, value FROM (\n  SELECT (${__from} / 1000.0) AS time, pin, value FROM before\n  UNION ALL SELECT time, pin, value FROM inside\n  UNION ALL SELECT (${__to} / 1000.0) AS time, pin, value FROM last\n)\nORDER BY time",
+          "queryType": "table",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.metric}",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "max": 1.05,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list"
+        }
+      },
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "metric"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
