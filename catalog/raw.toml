@@ -66,4 +66,14 @@ file = "rpi4/2026-11-09/measurement-data-saver.db"
 sha256 = "fda68914a97108d8ee96773ecc5726584af607de224211b1ec667f9853ba72e6"
 program = "measurement-data-saver"
 note = "pełna baza, sesje 1–33; dawniej data/dane_all_2026-11-09/ (w gicie jako zip, zgodny z tym plikiem)"
+contained_in ="rpi4/2026-11-16"
+
+[[dump]]
+id = "rpi4/2026-11-16"
+device = "rpi4"
+pulled = 2026-11-16
+file = "rpi4/2026-11-16/measurement-data-saver_2026-11-16_1257.db"
+sha256 = "8d824e3c53368db5d1df398b6a1a842fffdb77041c091d8c82301f0c84f50c44"
+program = "measurement-data-saver"
+note = "Świętochłowice; pełna baza, sesje 1–35; zgrana launcherem Zgraj_baze_Raspberry_Pi.bat 16.11 12:57 (restart przed kopią: sesja 34 kompletna, sesja 35 tylko 1 wskazanie; w trakcie kopii watchdog zrestartował usługę, sesja 36 od 12:57:57 będzie w następnym zrzucie)"
 contained_in = ""
