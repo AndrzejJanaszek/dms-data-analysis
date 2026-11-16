@@ -140,9 +140,23 @@ note = "gwałtowne spadki wskazań od początku okresu (użytkownik 2026-11-11; 
 [[period.issue]]
 channel = "weight"
 kind = "disturbance"
-start = 2026-10-26T05:54:00+01:00
-end = 2026-10-26T15:37:30+01:00
-note = "chwilowe gwałtowne spadki wskazań o ok. 30 % masy (użytkownik 2026-11-11; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+start = 2026-10-26T06:23:46+01:00
+end = 2026-10-26T07:06:34+01:00
+note = "chwilowe gwałtowne spadki wskazań (użytkownik 2026-11-11, granice zawężone 2026-11-15; hipoteza: spadki napięcia); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-26T11:25:13+01:00
+end = 2026-10-26T11:35:13+01:00
+note = "chwilowe zakłócenia wskazań (użytkownik 2026-11-15, zawężenie fragmentu z 2026-11-11); fragment nie idzie do analizy"
+
+[[period.issue]]
+channel = "weight"
+kind = "disturbance"
+start = 2026-10-26T14:41:40+01:00
+end = 2026-10-26T14:42:15+01:00
+note = "chwilowy gwałtowny spadek wskazań o ok. 30 % masy (użytkownik 2026-11-15, zawężenie fragmentu z 2026-11-11); fragment nie idzie do analizy"
 
 [[period.issue]]
 channel = "dispense"
