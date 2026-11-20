@@ -177,6 +177,11 @@ end = 2026-10-21T14:21:22+02:00
 
 [[period.manual_event]]
 channel = "refill"
+start = 2026-10-22T10:06:22+02:00
+end = 2026-10-22T10:07:32+02:00
+
+[[period.manual_event]]
+channel = "refill"
 start = 2026-10-22T10:26:32+02:00
 end = 2026-10-22T10:50:36+02:00
 

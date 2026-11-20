@@ -1,6 +1,5 @@
 from typing import Any
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from pandas.io.formats.style import Styler
@@ -9,7 +8,8 @@ from plotly.subplots import make_subplots
 from dms_analysis import style
 from dms_analysis.data import check
 from dms_analysis.data.catalog import Catalog
-from dms_analysis.events import store, synthetic
+from dms_analysis.errors.fragments import DAY_END_H, DAY_START_H
+from dms_analysis.events import store
 from dms_analysis.events.store import Results
 from dms_analysis.events.values import (
     BASE_DELAY_S,
@@ -24,16 +24,9 @@ from dms_analysis.events.values import (
 
 WITH_TEMPERATURES = "z temperaturami"
 WITHOUT_TEMPERATURES = "bez temperatur"
-GROUPS = (WITH_TEMPERATURES, WITHOUT_TEMPERATURES)
 METHOD_COLORS = dict(zip(METHODS, style.CATEGORICAL, strict=True))
-PART_COLORS = {synthetic.DAY: style.YELLOW, synthetic.NIGHT: style.VIOLET}
-PERIOD_COLORS = (style.BLUE, style.ORANGE, style.AQUA, style.YELLOW)
 DELAY_DASH = {0.0: "solid", 2.0: "dash", 3.0: "dot"}
-CONVERGENCE_STEPS = (100, 250, 500, 1000)
-MEAN_ERROR_RANGE_KG = 10.0
 REFILL_MARGIN = pd.Timedelta(minutes=5)
-WORST_COUNT = 6
-WORST_MARGIN_S = 60.0
 TIME_NAMES = {"real": "rzeczywisty", "estimated": "szacowany", "unknown": "zegara"}
 
 
@@ -43,16 +36,6 @@ def load_all(catalog: Catalog) -> dict[str, Results]:
 
 def warnings(results: dict[str, Results]) -> list[str]:
     return [warning for item in results.values() if (warning := store.staleness(item)) is not None]
-
-
-def period_name(full_id: str, item: Results) -> str:
-    if item.run["time"] == "estimated":
-        return f"{full_id} (czas szacowany ±2 h)"
-    return full_id
-
-
-def _time_dash(item: Results) -> str:
-    return "dash" if item.run["time"] == "estimated" else "solid"
 
 
 def group(item: Results) -> str:
@@ -306,7 +289,7 @@ def first_last_hours(results: dict[str, Results]) -> go.Figure:
                 row=1,
                 col=column,
             )
-        for hour in (synthetic.DAY_START_H, synthetic.DAY_END_H):
+        for hour in (DAY_START_H, DAY_END_H):
             figure.add_vline(x=hour, line={"color": style.RED, "width": 1.5, "dash": "dash"}, row=1, col=column)
     figure.update_xaxes(range=[0, 24], dtick=2, title_text="godzina (czas lokalny)")
     figure.update_yaxes(title_text="doby", row=1, col=1)
@@ -315,7 +298,7 @@ def first_last_hours(results: dict[str, Results]) -> go.Figure:
         height=380,
         title=(
             f"Godziny pierwszego i ostatniego odsypu doby (wszystkie przyjęte odsypy) · "
-            f"obecne granice dnia: {synthetic.DAY_START_H}–{synthetic.DAY_END_H} (czerwone linie)"
+            f"obecne granice dnia: {DAY_START_H}–{DAY_END_H} (czerwone linie)"
         ),
     )
     return figure
@@ -323,262 +306,3 @@ def first_last_hours(results: dict[str, Results]) -> go.Figure:
 
 def _hour(moments: pd.Series) -> pd.Series:
     return moments.dt.hour + moments.dt.minute / 60 + moments.dt.second / 3600
-
-
-def coverage_figure(full_id: str, item: Results) -> go.Figure:
-    trials = base(item.trials)
-    hour = _hour(trials["start"])
-    figure = go.Figure()
-    for part, color in PART_COLORS.items():
-        chosen = trials["part"] == part
-        figure.add_trace(
-            go.Scatter(
-                x=hour[chosen],
-                y=trials.loc[chosen, "date"],
-                mode="markers",
-                marker={"color": color, "size": 4, "opacity": 0.35},
-                name=part,
-                hoverinfo="skip",
-            )
-        )
-    dates = sorted(trials["date"].unique())
-    figure.update_xaxes(range=[0, 24], dtick=2, title_text="godzina startu sztucznego odsypu")
-    figure.update_yaxes(type="category", categoryorder="array", categoryarray=dates, autorange="reversed", title_text="doba")
-    figure.update_layout(
-        title=f"{period_name(full_id, item)} · pokrycie dób próbami (jeden punkt = jedna próba; luki = zdarzenia z marginesem 60 s)",
-        height=max(260, 34 * len(dates) + 140),
-    )
-    return figure
-
-
-def all_trials(results: dict[str, Results]) -> pd.DataFrame:
-    return pd.concat(
-        [
-            item.trials.assign(period=full_id, period_name=period_name(full_id, item), group=group(item))
-            for full_id, item in results.items()
-        ],
-        ignore_index=True,
-    )
-
-
-def _p95(errors: pd.Series) -> float:
-    return float(errors.abs().quantile(0.95))
-
-
-def convergence_figure(results: dict[str, Results]) -> go.Figure:
-    trials = base(all_trials(results))
-    measures = (("odchylenie std [kg]", "std"), ("95. percentyl |błędu| [kg]", _p95), ("średni błąd [kg]", "mean"))
-    figure = make_subplots(
-        rows=len(GROUPS), cols=len(measures), subplot_titles=[f"{g}: {m}" for g in GROUPS for m, _ in measures]
-    )
-    for row, group_name in enumerate(GROUPS, start=1):
-        for column, (_, function) in enumerate(measures, start=1):
-            for part, color in PART_COLORS.items():
-                chosen = trials[(trials["group"] == group_name) & (trials["part"] == part)]
-                points = [chosen[chosen["trial"] <= steps]["error_kg"].agg(function) for steps in CONVERGENCE_STEPS]
-                figure.add_trace(
-                    go.Scatter(
-                        x=list(CONVERGENCE_STEPS),
-                        y=points,
-                        mode="lines+markers",
-                        line={"color": color, "width": 2},
-                        marker={"size": 8},
-                        name=part,
-                        legendgroup=part,
-                        showlegend=row == 1 and column == 1,
-                        hovertemplate="%{x} prób na dobę i porę: %{y:.1f} kg<extra></extra>",
-                    ),
-                    row=row,
-                    col=column,
-                )
-    figure.update_xaxes(type="log", tickvals=list(CONVERGENCE_STEPS), title_text="próby na dobę i porę")
-    for row in range(1, len(GROUPS) + 1):
-        figure.update_yaxes(rangemode="tozero", row=row, col=1)
-        figure.update_yaxes(rangemode="tozero", row=row, col=2)
-        figure.update_yaxes(range=[-MEAN_ERROR_RANGE_KG, MEAN_ERROR_RANGE_KG], row=row, col=3)
-    figure.update_layout(
-        title=f"Zbieżność miar błędu z liczbą prób — wariant podstawowy ({variant_label(BASE_METHOD, BASE_DELAY_S)})",
-        height=620,
-    )
-    return figure
-
-
-def error_histograms(results: dict[str, Results], group_name: str) -> go.Figure:
-    trials = all_trials(results)
-    trials = trials[trials["group"] == group_name]
-    figure = _variant_grid(f"Błąd w teście półsyntetycznym — okresy {group_name} (dzień i noc osobno, każda pora = 100%)")
-    for row, method in enumerate(METHODS, start=1):
-        for column, delay_s in enumerate(DELAYS_S, start=1):
-            chosen = trials[(trials["method"] == method) & (trials["delay_s"] == delay_s)]
-            for part, color in PART_COLORS.items():
-                errors = chosen[chosen["part"] == part]["error_kg"]
-                figure.add_trace(
-                    go.Histogram(
-                        x=errors.clip(-200, 200),
-                        xbins={"start": -210, "end": 210, "size": 20},
-                        histnorm="percent",
-                        marker={"color": color, "line": {"color": style.SURFACE, "width": 1}},
-                        opacity=0.6,
-                        name=part,
-                        legendgroup=part,
-                        showlegend=row == 1 and column == 1,
-                        hovertemplate=f"{part}: %{{x}} kg<extra></extra>",
-                    ),
-                    row=row,
-                    col=column,
-                )
-    figure.update_layout(
-        barmode="overlay",
-        title=figure.layout.title.text + "<br><sup>błąd = wynik − znana masa [kg], przedziały co 20 kg, obcięty do ±200 kg</sup>",
-    )
-    figure.update_xaxes(title_text="błąd [kg]", showticklabels=True)
-    figure.update_yaxes(title_text="% prób", col=1)
-    return figure
-
-
-def error_table(results: dict[str, Results]) -> Styler:
-    trials = all_trials(results)
-    grouped = trials.groupby(["group", "part", "method", "delay_s"])["error_kg"]
-    table = pd.DataFrame(
-        {"średni błąd": grouped.mean(), "odchylenie std": grouped.std(), "95. percentyl |błędu|": grouped.agg(_p95)}
-    ).reset_index()
-    table["metoda"] = pd.Categorical(table["method"].map(METHOD_NAMES), [METHOD_NAMES[method] for method in METHODS])
-    table["d"] = table["delay_s"].map(delay_label)
-    wide = table.pivot_table(
-        index=["group", "part", "metoda"],
-        columns="d",
-        values=["odchylenie std", "95. percentyl |błędu|", "średni błąd"],
-        observed=True,
-    )
-    wide = wide.reindex(columns=["odchylenie std", "95. percentyl |błędu|", "średni błąd"], level=0)
-    wide.index.names = ["grupa", "pora", "metoda"]
-    wide.columns.names = ["miara [kg]", "przerwa"]
-
-    styled = wide.style.format(precision=1)
-    for measure in ("odchylenie std", "95. percentyl |błędu|"):
-        low, high = float(wide[measure].to_numpy().min()), float(wide[measure].to_numpy().max())
-        styled = styled.map(lambda value, low=low, high=high: style.sequential_css(value, low, high), subset=[measure])
-    return styled.map(lambda value: style.diverging_css(value, 5), subset=["średni błąd"]).set_caption(
-        "Miary błędu testu półsyntetycznego: im ciemniejszy niebieski, tym większy rozrzut; średni błąd: "
-        "czerwony = metoda zawyża masę, niebieski = zaniża"
-    )
-
-
-def error_by_hour(results: dict[str, Results]) -> go.Figure:
-    trials = base(all_trials(results))
-    figure = go.Figure()
-    for index, full_id in enumerate(results):
-        chosen = trials[trials["period"] == full_id]
-        by_hour = chosen.groupby("hour")["error_kg"].std()
-        figure.add_trace(
-            go.Scatter(
-                x=by_hour.index,
-                y=by_hour.to_numpy(),
-                mode="lines+markers",
-                line={"color": PERIOD_COLORS[index], "width": 2, "dash": _time_dash(results[full_id])},
-                marker={"size": 8},
-                name=period_name(full_id, results[full_id]),
-                hovertemplate="godz. %{x}: %{y:.1f} kg<extra>" + period_name(full_id, results[full_id]) + "</extra>",
-            )
-        )
-    figure.add_vrect(x0=-0.5, x1=synthetic.DAY_START_H - 0.5, fillcolor="rgba(98, 80, 214, 0.07)", line_width=0)
-    figure.add_vrect(x0=synthetic.DAY_END_H - 0.5, x1=23.5, fillcolor="rgba(98, 80, 214, 0.07)", line_width=0)
-    figure.update_xaxes(range=[-0.5, 23.5], dtick=1, title_text="godzina startu (czas lokalny; noc zacieniowana)")
-    figure.update_yaxes(title_text="odchylenie std błędu [kg]", rangemode="tozero")
-    figure.update_layout(
-        title=f"Błąd wg godziny doby — wariant podstawowy ({variant_label(BASE_METHOD, BASE_DELAY_S)})",
-        height=450,
-    )
-    return figure
-
-
-def error_by_day(results: dict[str, Results]) -> go.Figure:
-    trials = base(all_trials(results))
-    figure = make_subplots(rows=2, cols=1, shared_xaxes=True, subplot_titles=list(synthetic.DAY_PARTS), vertical_spacing=0.12)
-    for row, part in enumerate(synthetic.DAY_PARTS, start=1):
-        chosen = trials[trials["part"] == part]
-        by_day = chosen.groupby(["date", "full_day", "period_name"])["error_kg"].std().reset_index()
-        for full_day, color, label in ((1, style.BLUE, "doba pełna"), (0, style.EXCLUDED, "doba niepełna")):
-            days = by_day[by_day["full_day"] == full_day]
-            figure.add_trace(
-                go.Bar(
-                    x=days["date"],
-                    y=days["error_kg"],
-                    marker={"color": color},
-                    name=label,
-                    legendgroup=label,
-                    showlegend=row == 1,
-                    customdata=days["period_name"],
-                    hovertemplate="%{x}: %{y:.1f} kg<br>%{customdata}<extra></extra>",
-                ),
-                row=row,
-                col=1,
-            )
-        figure.update_yaxes(title_text="odch. std [kg]", row=row, col=1)
-    figure.update_xaxes(type="category", categoryorder="category ascending", tickangle=-60)
-    figure.update_layout(
-        margin={"b": 110},
-        title=f"Błąd wg doby — wariant podstawowy ({variant_label(BASE_METHOD, BASE_DELAY_S)})",
-        height=620,
-        bargap=0.25,
-    )
-    return figure
-
-
-def worst_trials(results: dict[str, Results], group_name: str) -> go.Figure:
-    trials = base(all_trials(results))
-    trials = trials[trials["group"] == group_name]
-    worst = trials.reindex(trials["error_kg"].abs().sort_values(ascending=False).index).head(WORST_COUNT)
-
-    titles = [
-        f"{row.period}<br>{row.start:%Y-%m-%d %H:%M} · masa {row.mass_kg:.0f} kg · błąd {row.error_kg:+.0f} kg"
-        for row in worst.itertuples()
-    ]
-    figure = make_subplots(rows=WORST_COUNT // 2, cols=2, subplot_titles=titles, vertical_spacing=0.12)
-    periods: dict[str, check.PreparedPeriod] = {}
-    for index, row in enumerate(worst.itertuples()):
-        period = periods.setdefault(row.period, check.load_period(row.period))
-        division_kg = float(results[row.period].run["division_kg"])
-        _trial_panel(figure, period, row, division_kg, (index // 2 + 1, index % 2 + 1), index == 0)
-    figure.update_layout(
-        title=f"Największe błędy — okresy {group_name}, wariant podstawowy (szary: oryginał, niebieski: ze sztucznym odsypem)",
-        height=330 * (WORST_COUNT // 2) + 120,
-    )
-    figure.update_annotations(font_size=11)
-    return figure
-
-
-def _trial_panel(
-    figure: go.Figure,
-    period: check.PreparedPeriod,
-    trial: Any,
-    division_kg: float,
-    position: tuple[int, int],
-    legend: bool,
-) -> None:
-    plot_row, plot_column = position
-    start = trial.start
-    end = start + pd.Timedelta(seconds=trial.duration_s)
-    low, high = start - pd.Timedelta(seconds=WORST_MARGIN_S), end + pd.Timedelta(seconds=WORST_MARGIN_S)
-    weight = period.weight[(period.weight["timestamp"] >= low) & (period.weight["timestamp"] <= high)]
-    seconds = (weight["timestamp"] - start).dt.total_seconds().to_numpy()
-    progress = np.clip(seconds / trial.duration_s, 0.0, 1.0)
-    shifted = np.round((weight["value"].to_numpy() - trial.mass_kg * progress) / division_kg) * division_kg
-
-    for values, color, name in ((weight["value"], style.EXCLUDED, "oryginał"), (shifted, style.BLUE, "ze sztucznym odsypem")):
-        figure.add_trace(
-            go.Scatter(
-                x=_naive(weight["timestamp"]),
-                y=values,
-                mode="lines",
-                line={"color": color, "width": 1.5},
-                name=name,
-                legendgroup=name,
-                showlegend=legend,
-            ),
-            row=plot_row,
-            col=plot_column,
-        )
-    figure.add_vrect(
-        x0=_naive_one(start), x1=_naive_one(end), fillcolor=style.SIGNAL_BAND, line_width=0, row=plot_row, col=plot_column
-    )

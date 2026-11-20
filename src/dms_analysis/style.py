@@ -62,6 +62,8 @@ def _mix(low: str, high: str, share: float) -> str:
 
 
 def sequential_css(value: float, low: float, high: float, color: str = BLUE) -> str:
+    if value != value:
+        return ""
     share = 0.0 if high <= low else (value - low) / (high - low)
     text = "#ffffff" if share > 0.6 else TEXT
     return f"background-color: {_mix('#f7f6f2', color, share * 0.85)}; color: {text}"
