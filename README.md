@@ -52,10 +52,19 @@ New data:
 
 - `dispenses` and `dispense_values`: mass of every accepted dispense in 9 variants (nearest sample, median, mean of a 3 s window × gap after the signal end d = 0, 2, 3 s; mass = before − after), `excluded` = `okno` (the widest window touches another accepted event, a catalog issue, a part boundary or misses samples) or `kolizja` (overlaps a refill), `no_drop` per variant, gaps to the neighbouring events. Rejected dispenses are signal errors and are not neighbours.
 - `refills`: refill mass from single samples and from 3 s medians, dispenses during the refill.
-- `synthetic_trials`: semi-synthetic test — a ramp with mass and duration drawn from the pooled real dispenses of all periods, placed in event-free fragments (60 s clear of events, no issues or gaps), rounded to the meter division; a fixed number of trials per day and day part (day `DAY_START_H`–`DAY_END_H`), seeded per period and day; error = estimate − known mass.
 - `run`: commit, catalog hash and `prepared_at` of the prepared database, parameters.
 
-Results are reviewed in `notebooks/events/event_values.ipynb` (summary, single-dispense browser, mass and variant plots, refills, day/night boundaries, coverage, convergence, error grids and tables, worst trials). Code: `dms_analysis.events`, plot style `dms_analysis.style`. Decisions: workspace `praca-inzynierska/zakres.md` §7, plan `plans/dms-data-analysis/etap2-wartosci-zdarzen-plan.md`.
+Results are reviewed in `notebooks/events/event_values.ipynb` (summary, single-dispense browser, mass and variant plots, refills, first and last dispense hours for the day/night boundaries). The semi-synthetic ramp test was removed in stage 3 (replaced by the grid test). Code: `dms_analysis.events`, plot style `dms_analysis.style`. Decisions: workspace `praca-inzynierska/zakres.md` §7, plan `plans/dms-data-analysis/etap2-wartosci-zdarzen-plan.md`.
+
+## Analysis stage 3: error measures
+
+`uv run python -m dms_analysis.errors <command>` (after `prepare`; code in `dms_analysis.errors`, results outside git). Real events = accepted by the rules plus dispenses rejected by the rules but marked `dobry` in `data/review/dispense-marks.csv`, minus catalog `false_event` issues. Day = 5:00–22:00 local time, night otherwise.
+
+- `grid [--period ID]` (~4 min): fake dispense without mass at every whole second of the event-free fragments (60 s clear of real events, no catalog issues, no sample gaps > 1.5 s), durations T = 10, 20, 30, 45, 60, 90 s, 9 variants; error = before − after. Per period `data/results/<site>/<id>/errors.db` (`run`, `days`, `grid_counts` = error counts per date, hour, T, d, method, `grid_skipped` = starts with a window of fewer than 3 samples, `grid_worst` = 20 worst starts per T and day part, at least 120 s apart); per site `data/results/<site>/errors_summary.db` (`grid_stats`: measures with 95 % percentile intervals from a bootstrap over days, B = 2000, per period and for all real-time periods together). Notebook `notebooks/errors/single_dispense.ipynb` (also relative error = error / typical dispense mass and error versus T on log axes, module `errors.scaling`).
+- `balance [--period ID]`: daily mass balance R = [W(end) − W(start)] − Σ refills + Σ dispenses, night to night (median 0:00–4:00) and 5–22 (medians 4:50–5:00 and 22:00–22:10); refills as blocks with the dispenses inside; groups control / without refill / with refill. Per period `data/results/<site>/<id>/balance.db`. Notebook `notebooks/errors/mass_balance.ipynb`.
+- `schedule`: every real working day (full day of real-time periods; two periods are joined when the gap is < 300 s and the weight change < 100 kg) replayed on every event-free day at the same clock times; E = sum of the dispense errors, Y = sum of the real dispense masses, two-way bootstrap over schedules and base days. Per site `data/results/<site>/schedule.db`. Notebook `notebooks/errors/day_sum.ipynb`.
+
+Plan: workspace `plans/dms-data-analysis/etap3-miary-bledu-plan.md`.
 
 ## Setup
 
