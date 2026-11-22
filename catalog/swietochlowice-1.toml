@@ -10,10 +10,10 @@ meter = "Dini Argeo DGTP"
 meter_division_kg = 20
 pins = { 5 = "dispense", 4 = "refill" }
 temperature_sensors = [
-  { number = 1, address = "28A8F126AB240B1C", position = "południe, wschód" },
-  { number = 2, address = "28989298AA240B81", position = "zachód, południe" },
-  { number = 3, address = "287C36E9AB240BD4", position = "zachód" },
-  { number = 4, address = "2833D8EDAB240BF3", position = "wschód" },
+  { number = 1, address = "28A8F126AB240B1C", position = "południowy wschód" },
+  { number = 2, address = "28989298AA240B81", position = "południowy zachód" },
+  { number = 3, address = "287C36E9AB240BD4", position = "północny zachód" },
+  { number = 4, address = "2833D8EDAB240BF3", position = "północny wschód" },
 ]
 
 [[period]]
