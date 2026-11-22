@@ -22,3 +22,19 @@ def prepared_path(full_id: str) -> Path:
 
 def results_path(full_id: str) -> Path:
     return RESULTS_DIR / full_id / "event_values.db"
+
+
+def errors_path(full_id: str) -> Path:
+    return RESULTS_DIR / full_id / "errors.db"
+
+
+def errors_summary_path(site: str) -> Path:
+    return RESULTS_DIR / site / "errors_summary.db"
+
+
+def balance_path(full_id: str) -> Path:
+    return RESULTS_DIR / full_id / "balance.db"
+
+
+def schedule_path(site: str) -> Path:
+    return RESULTS_DIR / site / "schedule.db"
