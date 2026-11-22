@@ -4,7 +4,8 @@ __pycache__/
 .ipynb_checkpoints/
 *.db-shm
 *.db-wal
-grafana/storage/
+grafana/storage/*
+!grafana/storage/.gitkeep
 data/prepared/
 data/raw/
 data/legacy/*.db
