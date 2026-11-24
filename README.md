@@ -21,7 +21,7 @@ The prepared periods (`dms_analysis.data`) use only `CURRENT_VARIANT`. The rules
 The analysis works on **periods**: continuous recordings from one site, described in the catalog and prepared one file per period. Period id: `<site>/<NNNN>-<start date>` (e.g. `swietochlowice-1/0002-2026-09-28`, `NNNN-unknown` when the date is not known); the number is sequential per site and the id never changes.
 
 - `catalog/raw.toml` — `[[dump]]` per raw dump: device, pull date, file under `data/raw/`, SHA-256, program, note, `contained_in` (a newer dump that holds all its rows).
-- `catalog/<site>.toml` — `[site]`, versioned `[[hardware]]` (silo, meter, division, `pins = { 5 = "dispense", 4 = "refill" }`, `temperature_sensors` with number, address and position) and `[[period]]`: source (dump + session, or dump + `first_id`/`last_id` for the old program without sessions), time status `real` | `estimated` | `unknown` with `clock_offset_h` (real = clock + offset; `unknown` keeps the device clock, offset 0) and `time_uncertainty_h`, `start`/`end` after correction (local time with offset), `checked`, `[period.channels]` (`weight`, `dispense`, `refill`, `temperatures`: `ok` | `flickering` | `broken` | `not_connected` | `no_values`), `[[period.issue]]` (problems in part of a period) and `[[period.manual_event]]` (events entered by hand, `end` omitted = open until the end of the period).
+- `catalog/<site>.toml` — `[site]`, versioned `[[hardware]]` (silo, meter, division, `pins = { 5 = "dispense", 4 = "refill" }`, `temperature_sensors` with number, address, position and optional `corner` = `NW` | `NE` | `SW` | `SE` for sensors on the corners of a square) and `[[period]]`: source (dump + session, or dump + `first_id`/`last_id` for the old program without sessions), time status `real` | `estimated` | `unknown` with `clock_offset_h` (real = clock + offset; `unknown` keeps the device clock, offset 0) and `time_uncertainty_h`, `start`/`end` after correction (local time with offset), `checked`, `[period.channels]` (`weight`, `dispense`, `refill`, `temperatures`: `ok` | `flickering` | `broken` | `not_connected` | `no_values`), `[[period.issue]]` (problems in part of a period) and `[[period.manual_event]]` (events entered by hand, `end` omitted = open until the end of the period).
 
 The catalog is validated when loaded (clear error in Polish). Scripts never rewrite it; they print blocks to paste.
 
@@ -65,6 +65,74 @@ Results are reviewed in `notebooks/events/event_values.ipynb` (summary, single-d
 - `schedule`: every real working day (full day of real-time periods; two periods are joined when the gap is < 300 s and the weight change < 100 kg) replayed on every event-free day at the same clock times; E = sum of the dispense errors, Y = sum of the real dispense masses, two-way bootstrap over schedules and base days. Per site `data/results/<site>/schedule.db`. Notebook `notebooks/errors/day_sum.ipynb`.
 
 Plan: workspace `plans/dms-data-analysis/etap3-miary-bledu-plan.md`.
+
+## Analysis stage 5: derived temperature data
+
+`uv run python -m dms_analysis.temperatures compute [--period ID]` (after `prepare`; periods with `temperatures = "ok"`; ~1 min for all). Per period `data/results/<site>/<id>/temperatures.db` (outside git, ~200 MB per week): `run` (commit, catalog hash, windows) and `temperatures`, one row per second, one column per quantity:
+
+- grid 1 s, nearest reading (`t<n>`); gaps up to 10 s between readings interpolated linearly and flagged (`filled_<n>`), longer gaps empty;
+- from the sensors in the same second, empty when any sensor is missing: `mean`, `dev_<n>` (sensor − mean), `spread` (population std), `max`, `min`, `range`, plane components `east_west`, `north_south`, `twist` (= ±half sums of corners, empty without all four `corner` values; spread² = sum of their squares / 4);
+- slope of a straight line fitted in a centred window of 30 s and 60 s, °C/min (`rate30_<n>`, `rate60_<n>`), empty when the window touches an empty second; from the four slopes `rate<w>_mean`, `rate<w>_spread` and the plane components `rate<w>_east_west` etc.
+
+Read with `dms_analysis.temperatures.store.load(period_id)`. No Grafana version yet.
+
+Notebook `notebooks/temperatures/derived_overview.ipynb` (module `temperatures.views`): for a chosen period, time range and sampling step, seven stacked comparisons with the weight readings (`TOP = "wskazanie"`) or the sensor temperatures (`TOP = "temperatura"`) on the top panel, against the mean, spread, min / max / range, spread with range, the slopes of each sensor, the mean of the slopes and their standard deviation.
+
+Table `temperatures` (columns for sensors 1–4; in `swietochlowice-1` corners: 1 SE, 2 SW, 3 NW, 4 NE; spread² = (`east_west`² + `north_south`² + `twist`²) / 4):
+
+| column | unit | meaning | empty when |
+|---|---|---|---|
+| `timestamp` | s | second of the grid, Unix time (UTC) | never |
+| `t1` | °C | sensor 1: nearest reading in this second, or linear interpolation inside a gap up to 10 s | gap between readings > 10 s |
+| `filled_1` | 0/1 | 1 = `t1` interpolated, 0 = measured or empty | never |
+| `t2` | °C | sensor 2: nearest reading in this second, or linear interpolation inside a gap up to 10 s | gap between readings > 10 s |
+| `filled_2` | 0/1 | 1 = `t2` interpolated, 0 = measured or empty | never |
+| `t3` | °C | sensor 3: nearest reading in this second, or linear interpolation inside a gap up to 10 s | gap between readings > 10 s |
+| `filled_3` | 0/1 | 1 = `t3` interpolated, 0 = measured or empty | never |
+| `t4` | °C | sensor 4: nearest reading in this second, or linear interpolation inside a gap up to 10 s | gap between readings > 10 s |
+| `filled_4` | 0/1 | 1 = `t4` interpolated, 0 = measured or empty | never |
+| `mean` | °C | mean of the sensors | any sensor empty in this second |
+| `dev_1` | °C | `t1` − `mean` | any sensor empty in this second |
+| `dev_2` | °C | `t2` − `mean` | any sensor empty in this second |
+| `dev_3` | °C | `t3` − `mean` | any sensor empty in this second |
+| `dev_4` | °C | `t4` − `mean` | any sensor empty in this second |
+| `spread` | °C | standard deviation of the sensors (population, divided by n) | any sensor empty in this second |
+| `max` | °C | highest sensor | any sensor empty in this second |
+| `min` | °C | lowest sensor | any sensor empty in this second |
+| `range` | °C | `max` − `min` | any sensor empty in this second |
+| `east_west` | °C | (NE + SE − NW − SW) / 2; > 0 = east side warmer | any sensor empty in this second, or not all four corners in the catalog |
+| `north_south` | °C | (NW + NE − SW − SE) / 2; > 0 = north side warmer | any sensor empty in this second, or not all four corners in the catalog |
+| `twist` | °C | (NW + SE − NE − SW) / 2; > 0 = NW–SE diagonal warmer | any sensor empty in this second, or not all four corners in the catalog |
+| `rate30_1` | °C/min | slope of a straight line fitted to `t1` in a centred 30 s window | the 30 s window (±15 s) touches an empty second; first and last 15 s of the period |
+| `rate30_2` | °C/min | slope of a straight line fitted to `t2` in a centred 30 s window | the 30 s window (±15 s) touches an empty second; first and last 15 s of the period |
+| `rate30_3` | °C/min | slope of a straight line fitted to `t3` in a centred 30 s window | the 30 s window (±15 s) touches an empty second; first and last 15 s of the period |
+| `rate30_4` | °C/min | slope of a straight line fitted to `t4` in a centred 30 s window | the 30 s window (±15 s) touches an empty second; first and last 15 s of the period |
+| `rate30_mean` | °C/min | mean of `rate30_1`–`rate30_4` (= slope of `mean`) | any `rate30_<n>` empty |
+| `rate30_spread` | °C/min | standard deviation of the four slopes (how unevenly the legs heat; not the slope of `spread`) | any `rate30_<n>` empty |
+| `rate30_east_west` | °C/min | `east_west` computed from the slopes (= slope of `east_west`) | any `rate30_<n>` empty, or not all four corners |
+| `rate30_north_south` | °C/min | `north_south` computed from the slopes (= slope of `north_south`) | any `rate30_<n>` empty, or not all four corners |
+| `rate30_twist` | °C/min | `twist` computed from the slopes (= slope of `twist`) | any `rate30_<n>` empty, or not all four corners |
+| `rate60_1` | °C/min | slope of a straight line fitted to `t1` in a centred 60 s window | the 60 s window (±30 s) touches an empty second; first and last 30 s of the period |
+| `rate60_2` | °C/min | slope of a straight line fitted to `t2` in a centred 60 s window | the 60 s window (±30 s) touches an empty second; first and last 30 s of the period |
+| `rate60_3` | °C/min | slope of a straight line fitted to `t3` in a centred 60 s window | the 60 s window (±30 s) touches an empty second; first and last 30 s of the period |
+| `rate60_4` | °C/min | slope of a straight line fitted to `t4` in a centred 60 s window | the 60 s window (±30 s) touches an empty second; first and last 30 s of the period |
+| `rate60_mean` | °C/min | mean of `rate60_1`–`rate60_4` (= slope of `mean`) | any `rate60_<n>` empty |
+| `rate60_spread` | °C/min | standard deviation of the four slopes (how unevenly the legs heat; not the slope of `spread`) | any `rate60_<n>` empty |
+| `rate60_east_west` | °C/min | `east_west` computed from the slopes (= slope of `east_west`) | any `rate60_<n>` empty, or not all four corners |
+| `rate60_north_south` | °C/min | `north_south` computed from the slopes (= slope of `north_south`) | any `rate60_<n>` empty, or not all four corners |
+| `rate60_twist` | °C/min | `twist` computed from the slopes (= slope of `twist`) | any `rate60_<n>` empty, or not all four corners |
+
+Table `run` (one row):
+
+| column | meaning |
+|---|---|
+| `period` | full period id |
+| `commit` | commit of the code (`+zmiany` = uncommitted changes) |
+| `catalog_sha256` | catalog hash of the prepared database used |
+| `prepared_at` | when the prepared database was built |
+| `computed_at` | when this file was computed (UTC) |
+| `windows_s` | slope windows, e.g. `30,60` |
+| `max_filled_gap_s` | longest gap between readings that is interpolated (10) |
 
 ## Setup
 

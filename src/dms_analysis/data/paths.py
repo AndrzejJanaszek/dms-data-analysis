@@ -38,3 +38,7 @@ def balance_path(full_id: str) -> Path:
 
 def schedule_path(site: str) -> Path:
     return RESULTS_DIR / site / "schedule.db"
+
+
+def temperatures_path(full_id: str) -> Path:
+    return RESULTS_DIR / full_id / "temperatures.db"
