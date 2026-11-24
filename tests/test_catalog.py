@@ -12,6 +12,7 @@ def test_valid_catalog_loads(write_catalog):
     assert period.hardware.pin_for("refill") == 4
     assert period.manual_events[0].end is None
     assert period.source.session == 33
+    assert period.hardware.temperature_sensors[0].corner is None
 
 
 @pytest.mark.parametrize(
@@ -25,6 +26,7 @@ def test_valid_catalog_loads(write_catalog):
         ('4 = "refill"', '4 = "valve"', "nieznana rola pinu 4"),
         ('time = "real"', 'time = "unknown"', None),
         ("start = 2026-11-02T10:42:14+01:00", "start = 2026-11-02T10:42:14", "bez strefy czasowej"),
+        ('position = "wschód" }', 'position = "wschód", corner = "E" }', "nieznana wartość corner"),
     ],
 )
 def test_invalid_catalog_is_rejected(write_catalog, old, new, message):

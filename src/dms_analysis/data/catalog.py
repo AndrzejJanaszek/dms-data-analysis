@@ -15,6 +15,7 @@ RAW_FILE = "raw.toml"
 CHANNELS = ("weight", "dispense", "refill", "temperatures")
 SIGNAL_CHANNELS = ("dispense", "refill")
 CHANNEL_STATES = ("ok", "flickering", "broken", "not_connected", "no_values")
+CORNERS = ("NW", "NE", "SW", "SE")
 TIME_STATUSES = ("real", "estimated", "unknown")
 ROLE_NAMES = {"dispense": PIN_ROLES[DISPENSE_PIN], "refill": PIN_ROLES[REFILL_PIN]}
 CANONICAL_PINS = {"dispense": DISPENSE_PIN, "refill": REFILL_PIN}
@@ -44,6 +45,7 @@ class TemperatureSensor:
     number: int
     address: str
     position: str
+    corner: str | None
 
 
 @dataclass(frozen=True)
@@ -242,10 +244,13 @@ def _hardware(block: dict[str, Any], context: str) -> Hardware:
                 number=_integer(sensor, "number", sensor_context),
                 address=_text(sensor, "address", sensor_context),
                 position=_text(sensor, "position", sensor_context),
+                corner=_corner(sensor, sensor_context),
             )
         )
     _check(len({sensor.address for sensor in sensors}) == len(sensors), f"{context}: powtórzony adres czujnika")
     _check(len({sensor.number for sensor in sensors}) == len(sensors), f"{context}: powtórzony numer czujnika")
+    corners = [sensor.corner for sensor in sensors if sensor.corner is not None]
+    _check(len(set(corners)) == len(corners), f"{context}: powtórzony róg czujnika")
 
     return Hardware(
         id=_text(block, "id", context),
@@ -401,6 +406,12 @@ def _text(block: dict[str, Any], key: str, context: str, default: str | None = N
     value = _present(block, key, context)
     _check(isinstance(value, str), f"{context}: {key} musi być tekstem")
     return value
+
+
+def _corner(block: dict[str, Any], context: str) -> str | None:
+    if "corner" not in block:
+        return None
+    return _choice(block, "corner", CORNERS, context)
 
 
 def _integer(block: dict[str, Any], key: str, context: str) -> int:
